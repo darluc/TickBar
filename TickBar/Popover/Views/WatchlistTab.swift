@@ -55,6 +55,14 @@ struct WatchlistTab: View {
                                 }
                             )
                             .contextMenu {
+                                if StockVolumeService.supports(item.symbol) {
+                                    Button(L("volume.title")) {
+                                        StockVolumeWindowController.shared.show(
+                                            symbol: item.symbol,
+                                            name: refresher.quotes[item.symbol]?.name ?? item.name
+                                        )
+                                    }
+                                }
                                 Button(L("action.openInBrowser", comment: "在浏览器中查看")) {
                                     openInBrowser(item.symbol)
                                 }
