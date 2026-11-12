@@ -129,7 +129,10 @@ final class PopoverController {
         refresher.setPopoverOpen(true)
         refresher.refreshNow()
         container.etfMonitor.setVisible(.popover, true)
+        // 弹出时立即激活，避免背景材质在首次点击后才切换为可读状态。
+        NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: positioningRect(relativeTo: view, anchorWidth: anchorWidth), of: view, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
         startOutsideClickMonitor()
     }
 

@@ -119,5 +119,11 @@ above applies to the GitHub release workflow.
   `security find-identity -v -p codesigning`.
 - **Notarization rejected:** inspect the notarytool submission log for entitlement
   or signature errors. Do not bypass verification to publish a failed submission.
-- **App data appears missing after rename:** TickBar uses new bundle identifiers
-  and an Application Support directory; old TickerBar data is not migrated automatically.
+- **App data after rename:** on launch, TickBar imports the old TickerBar database
+  and preferences once. Missing watchlists, stocks, holdings, alerts and settings
+  are merged into an existing TickBar database; current records win ID conflicts.
+  Debug and Release data stay separate. The legacy database is retained, and
+  consistent SQLite backups of both databases are saved under
+  `~/Library/Application Support/TickBar/MigrationBackups/<ID>/` (Debug uses
+  `TickBar-Dev`). A migration marker prevents deleted items from being restored
+  again on later launches. TickerBar data takes priority over older PanBar data.
