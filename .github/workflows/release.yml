@@ -1,0 +1,203 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version (e.g. 2026.1)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Publish Release
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME}"
+          fi
+          CLEAN_VERSION="${VERSION#v}"
+          echo "version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF_NAME:-$VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app && xcodebuild -version
+
+      - name: Install tools
+        run: brew install xcodegen create-dmg
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Check signing and notarization secrets
+        id: cert_check
+        env:
+          CERT_P12_BASE64: ${{ secrets.MAC_DEVELOPER_ID_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.MAC_DEVELOPER_ID_P12_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [[ -n "$CERT_P12_BASE64" && -n "$CERT_PASSWORD" ]]; then
+            echo "has_developer_id=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_developer_id=false" >> $GITHUB_OUTPUT
+          fi
+          if [[ -n "$APPLE_ID" && -n "$APPLE_PASSWORD" && -n "$TEAM_ID" ]]; then
+            echo "can_notarize=true" >> $GITHUB_OUTPUT
+          else
+            echo "can_notarize=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Import Developer ID Certificate (if present)
+        if: steps.cert_check.outputs.has_developer_id == 'true'
+        env:
+          CERT_P12_BASE64: ${{ secrets.MAC_DEVELOPER_ID_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.MAC_DEVELOPER_ID_P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MAC_KEYCHAIN_PASSWORD || 'temporary-runner-keychain-pass' }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          echo "$CERT_P12_BASE64" | base64 --decode > $RUNNER_TEMP/cert.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import $RUNNER_TEMP/cert.p12 \
+            -P "$CERT_PASSWORD" \
+            -A -t agg -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+      - name: Archive & Export Application
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          mkdir -p build/Release
+          xcodebuild \
+            -project TickBar.xcodeproj \
+            -scheme TickBar \
+            -configuration Release \
+            -archivePath build/TickBar.xcarchive \
+            MARKETING_VERSION=$VERSION \
+            CURRENT_PROJECT_VERSION=$(date +%s) \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+          cp -R build/TickBar.xcarchive/Products/Applications/TickBar.app build/Release/
+
+      - name: Sign Application (Developer Certificate)
+        if: steps.cert_check.outputs.has_developer_id == 'true'
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          SIGN_ID=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -E "Developer ID|Apple Distribution|Apple Development" | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "Signing with identity: $SIGN_ID"
+          codesign \
+            --force \
+            --options=runtime \
+            --timestamp \
+            --sign "$SIGN_ID" \
+            --keychain "$KEYCHAIN_PATH" \
+            --entitlements TickBar/Resources/TickBar.entitlements \
+            --deep \
+            build/Release/TickBar.app
+          codesign -dvvv build/Release/TickBar.app
+
+      - name: Sign Application (Ad-Hoc fallback)
+        if: steps.cert_check.outputs.has_developer_id == 'false'
+        run: |
+          echo "No certificate provided, falling back to ad-hoc signing..."
+          codesign --force --deep --sign - build/Release/TickBar.app
+          codesign -dvvv build/Release/TickBar.app
+
+      - name: Notarize & staple (if Apple ID & App-Specific Password provided)
+        if: steps.cert_check.outputs.has_developer_id == 'true' && steps.cert_check.outputs.can_notarize == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID || '475398SZ3P' }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          cd build/Release
+          ditto -c -k --keepParent --sequesterRsrc TickBar.app ../TickBar-$VERSION.zip
+          cd ../..
+          xcrun notarytool submit build/TickBar-$VERSION.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --wait
+
+          # 刚公证完等待 CloudKit Ticket 同步，并重试 staple 几次
+          echo "Stapling notarization ticket to app..."
+          STAPLE_SUCCESS=false
+          for i in {1..5}; do
+            sleep 6
+            if xcrun stapler staple build/Release/TickBar.app; then
+              echo "Staple app succeeded on attempt $i"
+              STAPLE_SUCCESS=true
+              xcrun stapler validate build/Release/TickBar.app || true
+              break
+            fi
+            echo "Staple attempt $i failed, retrying in 6s..."
+          done
+          if [ "$STAPLE_SUCCESS" != "true" ]; then
+            echo "::warning::Stapling ticket failed due to CloudKit network issue, but app was notarized successfully."
+          fi
+
+      - name: Package artifacts (ZIP & DMG)
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          cd build/Release
+          ditto -c -k --keepParent --sequesterRsrc TickBar.app ../TickBar-$VERSION.zip
+          cd ../..
+          create-dmg \
+            --volname "TickBar $VERSION" \
+            --window-pos 200 120 \
+            --window-size 540 380 \
+            --icon-size 100 \
+            --icon "TickBar.app" 140 190 \
+            --app-drop-link 400 190 \
+            --no-internet-enable \
+            build/TickBar-$VERSION.dmg \
+            build/Release/TickBar.app
+          xcrun stapler staple build/TickBar-$VERSION.dmg || true
+
+      - name: Upload artifacts to Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: TickBar-${{ steps.ver.outputs.version }}
+          path: |
+            build/TickBar-*.dmg
+            build/TickBar-*.zip
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+          gh release view "$TAG" >/dev/null 2>&1 && gh release delete "$TAG" --yes || true
+          gh release create "$TAG" \
+            --title "TickBar $VERSION" \
+            --generate-notes \
+            build/TickBar-$VERSION.dmg \
+            build/TickBar-$VERSION.zip

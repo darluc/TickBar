@@ -1,0 +1,103 @@
+name: TickBar
+options:
+  bundleIdPrefix: app.tickbar
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 TickBar contributors"
+    COMBINE_HIDPI_IMAGES: YES
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: "6.29.0"
+
+targets:
+  TickBar:
+    type: application
+    platform: macOS
+    sources:
+      - path: TickBar
+        excludes:
+          - "**/.DS_Store"
+    resources:
+      - path: TickBar/Resources
+    info:
+      path: TickBar/Resources/Info.plist
+      properties:
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.finance
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleDisplayName: "$(BUNDLE_DISPLAY_NAME)"
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        CFBundleLocalizations:
+          - zh-Hans
+          - en
+        CFBundleDevelopmentRegion: zh-Hans
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: NO
+        ENABLE_PREVIEWS: YES
+        PRODUCT_MODULE_NAME: TickBar
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: app.tickbar.TickBar.debug
+          PRODUCT_NAME: TickBar-Dev
+          BUNDLE_DISPLAY_NAME: TickBar Dev
+          CODE_SIGN_ENTITLEMENTS: TickBar/Resources/TickBar-Debug.entitlements
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: app.tickbar.TickBar
+          PRODUCT_NAME: TickBar
+          BUNDLE_DISPLAY_NAME: TickBar
+          CODE_SIGN_ENTITLEMENTS: TickBar/Resources/TickBar.entitlements
+    dependencies:
+      - package: GRDB
+
+  TickBarTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: TickBarTests
+    dependencies:
+      - target: TickBar
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.tickbar.TickBarTests
+        SWIFT_VERSION: "5.0"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+      configs:
+        Debug:
+          TEST_HOST: "$(BUILT_PRODUCTS_DIR)/TickBar-Dev.app/Contents/MacOS/TickBar-Dev"
+        Release:
+          TEST_HOST: "$(BUILT_PRODUCTS_DIR)/TickBar.app/Contents/MacOS/TickBar"
+
+schemes:
+  TickBar:
+    build:
+      targets:
+        TickBar: all
+        TickBarTests: [test]
+    test:
+      config: Debug
+      targets:
+        - TickBarTests
+    run:
+      config: Debug
+    archive:
+      config: Release
