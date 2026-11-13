@@ -140,7 +140,13 @@ jobs:
             ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO archive
           mkdir -p build/Release
           cp -R build/TickBar.xcarchive/Products/Applications/TickBar.app build/Release/
-          lipo -verify_arch arm64 x86_64 build/Release/TickBar.app/Contents/MacOS/TickBar
+          APP_ARCHS="$(lipo -archs build/Release/TickBar.app/Contents/MacOS/TickBar)"
+          for arch in arm64 x86_64; do
+            if [[ " $APP_ARCHS " != *" $arch "* ]]; then
+              echo "::error::Release executable is missing architecture: $arch"
+              exit 1
+            fi
+          done
 
       - name: Sign and verify application
         env:
