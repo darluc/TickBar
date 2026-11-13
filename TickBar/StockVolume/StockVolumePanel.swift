@@ -2,7 +2,6 @@ import SwiftUI
 
 enum StockVolumeChartMode: String, CaseIterable {
     case classified = "volume.classified"
-    case total = "volume.totalChart"
     case net = "volume.netChart"
 
     var title: String { L(rawValue) }
@@ -97,18 +96,10 @@ struct StockVolumePanel: View {
                 Toggle(L("volume.texture"), isOn: $texture).toggleStyle(.checkbox).font(.system(size: 11))
             }
             HStack(spacing: 18) {
-                if chartMode == .classified {
-                    ForEach(StockVolumeBand.allCases, id: \.rawValue) { band in
-                        legend(band.title, index: band.rawValue)
-                    }
-                    legend(L("volume.unknown"), index: 3)
-                } else if chartMode == .net {
-                    legend(L("volume.netBuy"), index: 0)
-                    legend(L("volume.netSell"), index: 4)
-                    legend(L("volume.netMissing"), index: 3)
-                } else {
-                    Text(L("volume.unitHands")).font(.system(size: 10)).foregroundStyle(.secondary)
+                ForEach(StockVolumeBand.allCases, id: \.rawValue) { band in
+                    legend(band.title, index: band.rawValue)
                 }
+                legend(L(chartMode == .net ? "volume.netMissing" : "volume.unknown"), index: 3)
             }
             GeometryReader { geo in
                 ZStack {
@@ -136,7 +127,9 @@ struct StockVolumePanel: View {
             .frame(height: 190)
             .chartAccessibility(chartMode.title, value: chartMode == .net
                                 ? (display.minutes.contains { $0.netAmount != nil }
-                                   ? Self.amount(display.summaries.reduce(0) { $0 + $1.net }) + " " + L("volume.unitAmount")
+                                   ? StockVolumeBand.allCases.map { band in
+                                       "\(band.title) \(Self.amount(display.summaries[band.rawValue].net))"
+                                   }.joined(separator: " · ") + " " + L("volume.unitAmount")
                                    : L("volume.netMissing"))
                                 : Self.hands(display.total))
             if chartMode == .net {
@@ -154,8 +147,9 @@ struct StockVolumePanel: View {
                 if chartMode == .net {
                     Table(display.minutes) {
                         TableColumn(L("volume.time")) { Text(ETFTime.label(slot: $0.slot)) }.width(65)
-                        TableColumn(L("volume.buy")) { Text($0.netAmount == nil ? "—" : Self.amount($0.buyAmount)) }
-                        TableColumn(L("volume.sell")) { Text($0.netAmount == nil ? "—" : Self.amount($0.sellAmount)) }
+                        TableColumn(StockVolumeBand.large.title) { Text($0.netAmounts.map { Self.amount($0[0]) } ?? "—") }
+                        TableColumn(StockVolumeBand.medium.title) { Text($0.netAmounts.map { Self.amount($0[1]) } ?? "—") }
+                        TableColumn(StockVolumeBand.small.title) { Text($0.netAmounts.map { Self.amount($0[2]) } ?? "—") }
                         TableColumn(L("volume.net")) { Text($0.netAmount.map(Self.amount) ?? "—") }
                     }
                 } else {
@@ -190,10 +184,11 @@ struct StockVolumePanel: View {
             if chartMode == .net {
                 Text("\(ETFTime.label(slot: slot))  ·  \(L("volume.net")) \(minute.netAmount.map(Self.amount) ?? "—") \(L("volume.unitAmount"))")
                     .font(.system(size: 11)).monospacedDigit()
-                if minute.netAmount != nil {
+                if let nets = minute.netAmounts {
                     HStack(spacing: 14) {
-                        Text("\(L("volume.buy")) \(Self.amount(minute.buyAmount))")
-                        Text("\(L("volume.sell")) \(Self.amount(minute.sellAmount))")
+                        ForEach(StockVolumeBand.allCases, id: \.rawValue) { band in
+                            Text("\(band.title) \(Self.amount(nets[band.rawValue]))")
+                        }
                     }.font(.system(size: 10)).monospacedDigit().foregroundStyle(.secondary)
                 } else {
                     Text(L("volume.netMissing")).font(.system(size: 10)).foregroundStyle(.secondary)
@@ -316,7 +311,7 @@ private struct StockVolumeChart: View, Equatable {
         Canvas { context, size in
             let height = max(size.height - 26, 1)
             let netMode = mode == .net
-            let peak = netMode ? max(minutes.compactMap(\.netAmount).map { abs($0) }.max() ?? 0, 10_000)
+            let peak = netMode ? max(minutes.map(\.netExtent).max() ?? 0, 10_000)
                                : max(minutes.map(\.total).max() ?? 0, 1)
             let width = max((size.width - Self.gutter) / CGFloat(ETFTime.slotCount) - 2, 0.5)
             for fraction in [0.0, 0.5, 1.0] {
@@ -341,24 +336,31 @@ private struct StockVolumeChart: View, Equatable {
                 let x = Self.x(minute.slot, width: size.width) - width / 2
                 if netMode {
                     let zeroY = 4 + height / 2
-                    if let net = minute.netAmount {
-                        let barHeight = CGFloat(abs(net) / peak) * height / 2
-                        let rect = CGRect(x: x, y: net > 0 ? zeroY - barHeight : zeroY,
-                                          width: width, height: barHeight)
-                        Self.fill(&context, rect: rect, index: net >= 0 ? 0 : 4, dark: dark, texture: texture)
+                    if let nets = minute.netAmounts {
+                        var positive: Double = 0
+                        var negative: Double = 0
+                        for (index, net) in nets.enumerated() where net != 0 {
+                            let offset = net > 0 ? positive : negative
+                            let barHeight = CGFloat(abs(net) / peak) * height / 2
+                            let y = net > 0 ? zeroY - CGFloat((offset + net) / peak) * height / 2
+                                            : zeroY + CGFloat(offset / peak) * height / 2
+                            let rect = CGRect(x: x, y: y, width: width, height: max(barHeight - 2, 0))
+                            Self.fill(&context, rect: rect, index: index, dark: dark, texture: texture)
+                            if net > 0 { positive += net } else { negative -= net }
+                        }
                     } else {
                         // A hatched marker means unknown, not a zero-valued bar.
                         Self.fill(&context, rect: CGRect(x: x, y: zeroY - 4, width: width, height: 8),
                                   index: 3, dark: dark, texture: true)
                     }
                 } else {
-                    let values = mode == .classified ? minute.classified + [minute.missing] : [minute.total]
+                    let values = minute.classified + [minute.missing]
                     var sum: Double = 0
                     for (index, value) in values.enumerated() where value > 0 {
                         let segmentHeight = CGFloat(value / peak) * height
                         let top = 4 + height * CGFloat(1 - (sum + value) / peak)
                         let rect = CGRect(x: x, y: top, width: width,
-                                          height: max(segmentHeight - (mode == .classified ? 2 : 0), 0))
+                                          height: max(segmentHeight - 2, 0))
                         Self.fill(&context, rect: rect, index: index, dark: dark, texture: texture)
                         sum += value
                     }

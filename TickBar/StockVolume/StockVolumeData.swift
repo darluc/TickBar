@@ -27,8 +27,19 @@ struct StockVolumeMinute: Equatable, Identifiable, Sendable {
     let slot: Int
     let total: Double
     var classified = [Double](repeating: 0, count: 3)
-    var buyAmount: Double = 0
-    var sellAmount: Double = 0
+    var buyAmounts = [Double](repeating: 0, count: 3)
+    var sellAmounts = [Double](repeating: 0, count: 3)
+    var buyAmount: Double { buyAmounts.reduce(0, +) }
+    var sellAmount: Double { sellAmounts.reduce(0, +) }
+    var netAmounts: [Double]? {
+        missing == 0 ? zip(buyAmounts, sellAmounts).map { $0.0 - $0.1 } : nil
+    }
+    /// Positive and negative categories stack separately, even when their combined net is zero.
+    var netExtent: Double {
+        guard let netAmounts else { return 0 }
+        return max(netAmounts.filter { $0 > 0 }.reduce(0, +),
+                   -netAmounts.filter { $0 < 0 }.reduce(0, +))
+    }
     var id: Int { slot }
     var covered: Double { classified.reduce(0, +) }
     var missing: Double { max(total - covered, 0) }
@@ -87,10 +98,10 @@ struct StockVolumeDisplay: Equatable, Sendable {
                     summaries[index].hands += trade.hands
                     if trade.side == 2 {
                         summaries[index].buy += trade.estimatedAmount
-                        minute.buyAmount += trade.estimatedAmount
+                        minute.buyAmounts[index] += trade.estimatedAmount
                     } else if trade.side == 1 {
                         summaries[index].sell += trade.estimatedAmount
-                        minute.sellAmount += trade.estimatedAmount
+                        minute.sellAmounts[index] += trade.estimatedAmount
                     } else { summaries[index].neutral += trade.estimatedAmount }
                 }
             } else {
