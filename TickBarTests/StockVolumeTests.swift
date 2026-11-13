@@ -120,6 +120,34 @@ final class StockVolumeDataTests: XCTestCase {
         XCTAssertNil(display.minutes.first(where: { $0.slot == 5 }), "changing tail minutes stay excluded")
     }
 
+    func testMinuteNetCategoriesKeepOpposingFlowsAndScaleBothStacks() throws {
+        let display = try StockVolumeDisplay.build(day: "2026-11-12",
+            reference: [0: 100, 1: 100, 2: 100, 3: 100], trades: [
+                .init(slot: 0, hands: 30, estimatedAmount: 1_000_000, side: 2),
+                .init(slot: 0, hands: 20, estimatedAmount: 500_000, side: 2),
+                .init(slot: 0, hands: 20, estimatedAmount: 500_000, side: 2),
+                .init(slot: 0, hands: 30, estimatedAmount: 50_000, side: 1),
+                .init(slot: 1, hands: 40, estimatedAmount: 1_000_000, side: 1),
+                .init(slot: 1, hands: 30, estimatedAmount: 500_000, side: 2),
+                .init(slot: 1, hands: 30, estimatedAmount: 500_000, side: 2),
+                .init(slot: 2, hands: 50, estimatedAmount: 1_000_000, side: 2),
+                .init(slot: 3, hands: 100, estimatedAmount: 100_000, side: 4)
+            ])
+        XCTAssertEqual(display.minutes[0].netAmounts, [1_000_000, 1_000_000, -50_000])
+        XCTAssertEqual(display.minutes[0].netExtent, 2_000_000, "axis must contain the entire positive stack")
+        XCTAssertEqual(display.minutes[1].netAmount, 0)
+        XCTAssertEqual(display.minutes[1].netAmounts, [-1_000_000, 1_000_000, 0], "opposing categories remain visible when total net is zero")
+        XCTAssertEqual(display.minutes[1].netExtent, 1_000_000)
+        XCTAssertNil(display.minutes[2].netAmounts, "missing minutes must not publish per-category zeroes")
+        for band in StockVolumeBand.allCases {
+            XCTAssertEqual(display.minutes.compactMap(\.netAmounts).reduce(0) { $0 + $1[band.rawValue] },
+                           display.summaries[band.rawValue].net)
+        }
+        let negative = StockVolumeMinute(slot: 0, total: 0, sellAmounts: [1_000_000, 200_000, 50_000])
+        XCTAssertEqual(negative.netExtent, 1_250_000, "axis must contain the entire negative stack")
+        XCTAssertEqual(StockVolumeChartMode.allCases, [.classified, .net])
+    }
+
     func testClosingAuctionAndNeutralAmountsAreIncluded() throws {
         let display = try StockVolumeDisplay.build(day: "2026-11-12", reference: [240: 100], trades: [
             .init(slot: 240, hands: 100, estimatedAmount: 100_000, side: 4)
@@ -282,9 +310,10 @@ final class StockVolumeMonitorTests: XCTestCase {
         let trades: [StockVolumeTrade] = (0...60).flatMap { slot -> [StockVolumeTrade] in
             if slot % 4 == 3 { return [.init(slot: slot, hands: 50, estimatedAmount: 50_000, side: 2)] }
             if slot % 4 == 2 { return [.init(slot: slot, hands: 100, estimatedAmount: 100_000, side: 4)] }
-            let buy = slot % 4 == 0 ? 60.0 : 40.0
-            return [.init(slot: slot, hands: buy, estimatedAmount: buy * 1000, side: 2),
-                    .init(slot: slot, hands: 100 - buy, estimatedAmount: (100 - buy) * 1000, side: 1)]
+            let side = slot % 4 == 0 ? 2 : 1
+            return [.init(slot: slot, hands: 40, estimatedAmount: 1_000_000, side: side),
+                    .init(slot: slot, hands: 30, estimatedAmount: 500_000, side: 3 - side),
+                    .init(slot: slot, hands: 30, estimatedAmount: 50_000, side: side)]
         }
         await worker.setSnapshot(try StockVolumeDisplay.build(day: "2026-11-12", reference: reference, trades: trades))
         let model = monitor(worker)
