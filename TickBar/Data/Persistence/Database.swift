@@ -24,7 +24,11 @@ final class Database {
         let base = try defaultDirectory()
         let dbPath = base.appendingPathComponent("tickbar.sqlite").path
 
-        migrateFromLegacyIfNeeded(currentPath: dbPath, folderName: appSupportFolderName())
+        try LegacyDataMigration.migrateDatabase(
+            current: URL(fileURLWithPath: dbPath),
+            applicationSupport: base.deletingLastPathComponent(),
+            folderName: appSupportFolderName()
+        )
         return dbPath
     }
 
@@ -50,42 +54,4 @@ final class Database {
         return "TickBar"
     }
 
-    /// Legacy 迁移:兼容原 PanBar 数据库
-    private static func migrateFromLegacyIfNeeded(currentPath: String, folderName: String) {
-        let fm = FileManager.default
-
-        // 当前路径已有数据就跳过
-        if fm.fileExists(atPath: currentPath),
-           let attrs = try? fm.attributesOfItem(atPath: currentPath),
-           let size = attrs[.size] as? UInt64, size > 0 {
-            return
-        }
-
-        guard let home = ProcessInfo.processInfo.environment["HOME"] else { return }
-        let legacyCandidates = [
-            "\(home)/Library/Application Support/\(folderName)/panbar.sqlite",
-            "\(home)/Library/Application Support/PanBar-Dev/panbar.sqlite",
-            "\(home)/Library/Application Support/PanBar/panbar.sqlite"
-        ]
-
-        for legacyDB in legacyCandidates where fm.fileExists(atPath: legacyDB) {
-            let currentURL = URL(fileURLWithPath: currentPath)
-            let currentDir = currentURL.deletingLastPathComponent().path
-            try? fm.createDirectory(atPath: currentDir, withIntermediateDirectories: true)
-            do {
-                for suffix in ["", "-wal", "-shm"] {
-                    let src = legacyDB + suffix
-                    let dst = currentPath + suffix
-                    if fm.fileExists(atPath: src) {
-                        try? fm.removeItem(atPath: dst)
-                        try? fm.copyItem(atPath: src, toPath: dst)
-                    }
-                }
-                Log.db.info("migrated db from legacy \(legacyDB, privacy: .public)")
-                return
-            } catch {
-                Log.db.warning("legacy db migration failed: \(String(describing: error), privacy: .public)")
-            }
-        }
-    }
 }
