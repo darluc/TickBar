@@ -37,12 +37,12 @@ struct ETFDisplay: Equatable, Sendable {
     var isEmpty: Bool { day.isEmpty }
     var liveSlot: Int { bars.count - 1 }
 
-    static func build(quotes: [ETFQuote], minutes: [String: ETFMinuteSeries], fresh: Set<String>,
+    static func build(quotes: [ETFQuote], minutes: [String: ETFMinuteSeries],
                       baseline: ETFBaseline?) -> ETFDisplay {
         var out = ETFDisplay()
         let basket = ETFDescriptor.names
         let live = quotes.filter { $0.code != ETFDescriptor.indexCode }.map { ETFTime.day($0.timestamp) }
-            + minutes.values.map(\.day)
+            + minutes.filter { $0.key != ETFDescriptor.indexCode }.values.map(\.day)
         guard let day = live.max() else { return out }
         out.day = day
 
@@ -64,10 +64,9 @@ struct ETFDisplay: Equatable, Sendable {
             minutes[code].flatMap { $0.day == day ? (code, $0) : nil }
         }
         out.minuteCount = covered.count
-        // Show minutes only up to the newest minute that every freshly fetched ETF has reported,
-        // so a request that landed a minute late never under-counts the last bar.
-        let edgeSource = covered.filter { fresh.contains($0.0) }
-        let edge = (edgeSource.isEmpty ? covered : edgeSource).map { $0.1.lastSlot }.min() ?? -1
+        // A failed request may leave a cached series behind the others. Do not advance
+        // past it and silently count its missing minutes as zero.
+        let edge = covered.map { $0.1.lastSlot }.min() ?? -1
         if edge >= 0 {
             var bars = [Double](repeating: 0, count: edge + 1)
             for (_, series) in covered {
@@ -162,7 +161,7 @@ actor ETFWorker: ETFRefreshing {
         let service = service
 
         async let quoteResult: [ETFQuote]? = try? await service.quotes()
-        var fresh = Set<String>()
+        var nextMinutes = minutes
         var pending = ETFDescriptor.basket.map { ($0.code, $0.secid) } + [(ETFDescriptor.indexCode, ETFDescriptor.indexSecid)]
         for _ in 0..<2 where !pending.isEmpty && !Task.isCancelled {
             let results = await concurrently(pending, limit: 6) { target in
@@ -170,20 +169,58 @@ actor ETFWorker: ETFRefreshing {
             }
             pending = []
             for (target, series) in results {
-                if let series { minutes[target.0] = series; fresh.insert(target.0) } else { pending.append(target) }
+                if let series, let merged = Self.mergeMinutes(nextMinutes[target.0], series) {
+                    nextMinutes[target.0] = merged
+                } else { pending.append(target) }
             }
         }
         outcome.failedMinutes = pending.filter { $0.0 != ETFDescriptor.indexCode }.count
-        if let fetched = await quoteResult { quotes = fetched } else { outcome.quotesFailed = true }
-
-        var display = ETFDisplay.build(quotes: quotes, minutes: minutes, fresh: fresh, baseline: baseline)
+        let fetched = await quoteResult
+        guard !Task.isCancelled else { return outcome }
+        let nextQuotes = Self.mergeQuotes(quotes, fetched ?? [])
+        let fetchedCodes = Set((fetched ?? []).map(\.code))
+        let oldQuotes = Dictionary(quotes.map { ($0.code, $0) }, uniquingKeysWith: { a, b in a.timestamp >= b.timestamp ? a : b })
+        outcome.quotesFailed = fetched == nil || ETFDescriptor.basket.contains { !fetchedCodes.contains($0.code) }
+            || (fetched ?? []).contains { quote in oldQuotes[quote.code].map { quote.timestamp < $0.timestamp } ?? false }
+        var display = ETFDisplay.build(quotes: nextQuotes, minutes: nextMinutes, baseline: baseline)
         if !display.isEmpty, baseline?.liveDay != display.day, !Task.isCancelled {
             await loadBaseline(for: display.day)
-            display = ETFDisplay.build(quotes: quotes, minutes: minutes, fresh: fresh, baseline: baseline)
+            display = ETFDisplay.build(quotes: nextQuotes, minutes: nextMinutes, baseline: baseline)
         }
+        guard !Task.isCancelled else { return outcome }
+        minutes = nextMinutes
+        quotes = nextQuotes
         outcome.baselineMissing = !display.isEmpty && display.previous == nil
         outcome.display = display
         return outcome
+    }
+
+    /// Keep newer per-symbol quotes when the server returns a partial or delayed batch.
+    static func mergeQuotes(_ cached: [ETFQuote], _ incoming: [ETFQuote]) -> [ETFQuote] {
+        var merged = Dictionary(cached.map { ($0.code, $0) }, uniquingKeysWith: { a, b in
+            a.timestamp >= b.timestamp ? a : b
+        })
+        for quote in incoming where merged[quote.code].map({ quote.timestamp >= $0.timestamp }) ?? true {
+            merged[quote.code] = quote
+        }
+        return Array(merged.values)
+    }
+
+    /// Reject older or truncated responses; fill gaps from the existing same-day series.
+    /// Values present in a current response still replace old values, allowing corrections.
+    static func mergeMinutes(_ cached: ETFMinuteSeries?, _ incoming: ETFMinuteSeries) -> ETFMinuteSeries? {
+        guard let cached else { return incoming }
+        if incoming.day < cached.day { return nil }
+        if incoming.day > cached.day { return incoming }
+        guard incoming.lastSlot >= cached.lastSlot else { return nil }
+        var merged = incoming
+        for slot in 0..<min(merged.amount.count, cached.amount.count) {
+            if merged.amount[slot] == nil {
+                merged.amount[slot] = cached.amount[slot]
+                merged.close[slot] = cached.close[slot]
+            }
+        }
+        return merged
     }
 
     private func loadBaseline(for day: String) async {

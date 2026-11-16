@@ -95,9 +95,15 @@ final class ETFMonitor: ObservableObject {
             publishStatus()
             return
         }
-        if outcome.display != board.display { board.display = outcome.display }
+        let current = board.display
+        let next = outcome.display
+        // Keep the last complete session visible while a new day's basket is incomplete.
+        let incompleteRollover = !current.isEmpty && next.day > current.day &&
+            (next.quoteCount < ETFDescriptor.basket.count || next.minuteCount < ETFDescriptor.basket.count)
+        if !incompleteRollover && next != current { board.display = next }
         if outcome.reachedServer { lastSuccess = Date() }
         problems = outcome.problems
+        if incompleteRollover { problems.append(L("etf.error.rollover", comment: "新交易日数据不完整，保留上一交易日")) }
         publishStatus()
     }
 
