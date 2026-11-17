@@ -37,12 +37,12 @@ struct ETFDisplay: Equatable, Sendable {
     var isEmpty: Bool { day.isEmpty }
     var liveSlot: Int { bars.count - 1 }
 
-    static func build(quotes: [ETFQuote], minutes: [String: ETFMinuteSeries], fresh: Set<String>,
+    static func build(quotes: [ETFQuote], minutes: [String: ETFMinuteSeries],
                       baseline: ETFBaseline?) -> ETFDisplay {
         var out = ETFDisplay()
         let basket = ETFDescriptor.names
         let live = quotes.filter { $0.code != ETFDescriptor.indexCode }.map { ETFTime.day($0.timestamp) }
-            + minutes.values.map(\.day)
+            + minutes.filter { $0.key != ETFDescriptor.indexCode }.values.map(\.day)
         guard let day = live.max() else { return out }
         out.day = day
 
@@ -64,10 +64,9 @@ struct ETFDisplay: Equatable, Sendable {
             minutes[code].flatMap { $0.day == day ? (code, $0) : nil }
         }
         out.minuteCount = covered.count
-        // Show minutes only up to the newest minute that every freshly fetched ETF has reported,
-        // so a request that landed a minute late never under-counts the last bar.
-        let edgeSource = covered.filter { fresh.contains($0.0) }
-        let edge = (edgeSource.isEmpty ? covered : edgeSource).map { $0.1.lastSlot }.min() ?? -1
+        // A failed request may leave a cached series behind the others. Do not advance
+        // past it and silently count its missing minutes as zero.
+        let edge = covered.map { $0.1.lastSlot }.min() ?? -1
         if edge >= 0 {
             var bars = [Double](repeating: 0, count: edge + 1)
             for (_, series) in covered {
@@ -81,21 +80,24 @@ struct ETFDisplay: Equatable, Sendable {
             out.index = Array(series.close[0...series.lastSlot])
         }
 
-        if let baseline, baseline.liveDay == day {
-            out.previous = baseline.previous
-            out.previousDay = baseline.previousDay
-            out.average = baseline.average
-            out.averageDays = baseline.averageDays
-            if let now = out.cumulative.last, edge >= 0 {
-                func pace(_ curve: ETFCurve?) -> Double? {
-                    guard let reference = curve?.value(at: edge), reference > 0 else { return nil }
-                    return now / reference - 1
-                }
-                out.paceAverage = pace(baseline.average)
-                out.pacePrevious = pace(baseline.previous)
-            }
-        }
+        out.applyBaseline(baseline)
         return out
+    }
+
+    mutating func applyBaseline(_ baseline: ETFBaseline?) {
+        guard let baseline, baseline.liveDay == day else { return }
+        previous = baseline.previous
+        previousDay = baseline.previousDay
+        average = baseline.average
+        averageDays = baseline.averageDays
+        if let now = cumulative.last, liveSlot >= 0 {
+            func pace(_ curve: ETFCurve?) -> Double? {
+                guard let reference = curve?.value(at: liveSlot), reference > 0 else { return nil }
+                return now / reference - 1
+            }
+            paceAverage = pace(baseline.average)
+            pacePrevious = pace(baseline.previous)
+        }
     }
 }
 
@@ -149,41 +151,167 @@ struct ETFBaseline: Equatable, Sendable {
 /// two comparison curves.
 actor ETFWorker: ETFRefreshing {
     private let service: ETFService
+    private let fallback: TencentETFService
     private var quotes: [ETFQuote] = []
     private var minutes: [String: ETFMinuteSeries] = [:]
     private var bars: [String: [String: [Double?]]] = [:]
     private var barsDay = ""
     private var baseline: ETFBaseline?
+    private var baselineRetryDay = ""
+    private var baselineRetryAfter = Date.distantPast
 
-    init(service: ETFService = ETFService()) { self.service = service }
+    init(service: ETFService = ETFService(), fallback: TencentETFService = TencentETFService()) {
+        self.service = service
+        self.fallback = fallback
+    }
 
     func refresh() async -> ETFOutcome {
         var outcome = ETFOutcome()
         let service = service
+        let fallback = fallback
+        let cachedMinutes = minutes
+        let cachedQuotes = quotes
+        let targets = ETFDescriptor.basket.map { ($0.code, $0.secid) } + [(ETFDescriptor.indexCode, ETFDescriptor.indexSecid)]
 
-        async let quoteResult: [ETFQuote]? = try? await service.quotes()
-        var fresh = Set<String>()
-        var pending = ETFDescriptor.basket.map { ($0.code, $0.secid) } + [(ETFDescriptor.indexCode, ETFDescriptor.indexSecid)]
-        for _ in 0..<2 where !pending.isEmpty && !Task.isCancelled {
-            let results = await concurrently(pending, limit: 6) { target in
-                (target, try? await service.minutes(secid: target.1))
+        async let quoteResult = etfAttempt(source: "East Money", operation: "quotes") { try await service.quotes() }
+        let minuteResults = await concurrently(targets, limit: 6) { target -> (String, ETFMinuteSeries?, Bool) in
+            if let value = await etfAttempt(source: "East Money", operation: "minutes \(target.0)", {
+                try await service.minutes(secid: target.1)
+            }), let merged = Self.mergeMinutes(cachedMinutes[target.0], value) {
+                return (target.0, merged, false)
             }
-            pending = []
-            for (target, series) in results {
-                if let series { minutes[target.0] = series; fresh.insert(target.0) } else { pending.append(target) }
+            if let value = await etfAttempt(source: "Tencent", operation: "minutes \(target.0)", {
+                try await fallback.minutes(code: target.0)
+            }), let merged = Self.mergeMinutes(cachedMinutes[target.0], value) {
+                return (target.0, merged, true)
             }
+            return (target.0, nil, false)
         }
-        outcome.failedMinutes = pending.filter { $0.0 != ETFDescriptor.indexCode }.count
-        if let fetched = await quoteResult { quotes = fetched } else { outcome.quotesFailed = true }
+        let fetched = await quoteResult ?? []
+        guard !Task.isCancelled else { return outcome }
+        let fetchedQuotes = Dictionary(fetched.map { ($0.code, $0) }, uniquingKeysWith: { a, b in
+            a.timestamp >= b.timestamp ? a : b
+        })
+        // Use a median of the current basket and each symbol's quote time, rather
+        // than wall-clock time or a single outlier, to detect a stalled feed.
+        let days = minuteResults.filter { $0.0 != ETFDescriptor.indexCode }.compactMap { $0.1?.day }
+        let counts = Dictionary(days.map { ($0, 1) }, uniquingKeysWith: +)
+        let referenceDay = counts.max { a, b in a.value == b.value ? a.key < b.key : a.value < b.value }?.key
+        let slots = minuteResults.compactMap { code, series, _ -> Int? in
+            guard code != ETFDescriptor.indexCode, let series, series.day == referenceDay else { return nil }
+            return series.lastSlot
+        }.sorted()
+        let referenceSlot = slots.count >= 5 ? slots[slots.count / 2] : nil
+        func stalled(_ code: String, _ series: ETFMinuteSeries) -> Bool {
+            if let referenceDay, let referenceSlot, Self.isStale(series, day: referenceDay, slot: referenceSlot) { return true }
+            if let quote = fetchedQuotes[code], let slot = Self.quoteSlot(quote.timestamp) {
+                return Self.isStale(series, day: ETFTime.day(quote.timestamp), slot: slot)
+            }
+            return false
+        }
+        let stale = minuteResults.filter { code, series, _ in
+            guard code != ETFDescriptor.indexCode, let series else { return false }
+            return stalled(code, series)
+        }
+        let recovered = await concurrently(stale, limit: 6) { entry -> (String, ETFMinuteSeries?, Bool) in
+            guard !entry.2, let existing = entry.1 else { return entry }
+            guard let value = await etfAttempt(source: "Tencent", operation: "stale minutes \(entry.0)", {
+                try await fallback.minutes(code: entry.0)
+            }), let merged = Self.mergeMinutes(existing, value),
+                  merged.day > existing.day || merged.lastSlot > existing.lastSlot else { return entry }
+            return (entry.0, merged, true)
+        }
+        let recoveredByCode = Dictionary(uniqueKeysWithValues: recovered.map { ($0.0, $0) })
+        var nextMinutes = cachedMinutes
+        for result in minuteResults {
+            let (code, series, usedFallback) = recoveredByCode[result.0] ?? result
+            if let series {
+                nextMinutes[code] = series
+                if usedFallback && code != ETFDescriptor.indexCode { outcome.fallbackMinutes += 1 }
+                if code != ETFDescriptor.indexCode, stalled(code, series) { outcome.failedMinutes += 1 }
+            } else if code != ETFDescriptor.indexCode { outcome.failedMinutes += 1 }
+        }
 
-        var display = ETFDisplay.build(quotes: quotes, minutes: minutes, fresh: fresh, baseline: baseline)
-        if !display.isEmpty, baseline?.liveDay != display.day, !Task.isCancelled {
-            await loadBaseline(for: display.day)
-            display = ETFDisplay.build(quotes: quotes, minutes: minutes, fresh: fresh, baseline: baseline)
+        guard !Task.isCancelled else { return outcome }
+        let oldQuotes = Dictionary(cachedQuotes.map { ($0.code, $0) }, uniquingKeysWith: { a, b in a.timestamp >= b.timestamp ? a : b })
+        let minuteDay = ETFDescriptor.basket.compactMap { nextMinutes[$0.code]?.day }.max()
+        func usableQuote(_ quote: ETFQuote) -> Bool {
+            (oldQuotes[quote.code].map { quote.timestamp >= $0.timestamp } ?? true) &&
+                (minuteDay.map { ETFTime.day(quote.timestamp) >= $0 } ?? true)
         }
+        let usable = fetched.filter(usableQuote)
+        let primaryCodes = Set(usable.map(\.code))
+        let missing = targets.map(\.0).filter { !primaryCodes.contains($0) }
+        var replacement: [ETFQuote] = []
+        if !missing.isEmpty {
+            replacement = await etfAttempt(source: "Tencent", operation: "quotes") {
+                try await fallback.quotes(codes: missing)
+            } ?? []
+            replacement = replacement.filter(usableQuote)
+        }
+        let available = primaryCodes.union(replacement.map(\.code))
+        outcome.fallbackQuotes = !replacement.isEmpty
+        outcome.quotesFailed = ETFDescriptor.basket.contains { !available.contains($0.code) }
+        guard !Task.isCancelled else { return outcome }
+        quotes = Self.mergeQuotes(cachedQuotes, usable + replacement)
+        minutes = nextMinutes
+        let display = ETFDisplay.build(quotes: quotes, minutes: minutes, baseline: baseline)
         outcome.baselineMissing = !display.isEmpty && display.previous == nil
         outcome.display = display
         return outcome
+    }
+
+    private static func quoteSlot(_ date: Date) -> Int? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Shanghai")!
+        let components = calendar.dateComponents([.hour, .minute], from: date)
+        guard let hour = components.hour, let minute = components.minute else { return nil }
+        return ETFTime.slot(hour: hour, minute: minute)
+    }
+
+    /// Five slots tolerate normal provider delays without letting a stalled series freeze the basket.
+    static func isStale(_ series: ETFMinuteSeries, day: String, slot: Int) -> Bool {
+        series.day < day || (series.day == day && series.lastSlot + 5 < slot)
+    }
+
+    /// Keep newer per-symbol quotes when the server returns a partial or delayed batch.
+    static func mergeQuotes(_ cached: [ETFQuote], _ incoming: [ETFQuote]) -> [ETFQuote] {
+        var merged = Dictionary(cached.map { ($0.code, $0) }, uniquingKeysWith: { a, b in
+            a.timestamp >= b.timestamp ? a : b
+        })
+        for quote in incoming where merged[quote.code].map({ quote.timestamp >= $0.timestamp }) ?? true {
+            merged[quote.code] = quote
+        }
+        return Array(merged.values)
+    }
+
+    /// Reject older or truncated responses; fill gaps from the existing same-day series.
+    /// Values present in a current response still replace old values, allowing corrections.
+    static func mergeMinutes(_ cached: ETFMinuteSeries?, _ incoming: ETFMinuteSeries) -> ETFMinuteSeries? {
+        guard let cached else { return incoming }
+        if incoming.day < cached.day { return nil }
+        if incoming.day > cached.day { return incoming }
+        guard incoming.lastSlot >= cached.lastSlot else { return nil }
+        var merged = incoming
+        for slot in 0..<min(merged.amount.count, cached.amount.count) {
+            if merged.amount[slot] == nil {
+                merged.amount[slot] = cached.amount[slot]
+                merged.close[slot] = cached.close[slot]
+            }
+        }
+        return merged
+    }
+
+    func prepareBaseline(for day: String) async -> ETFBaseline? {
+        if baseline?.liveDay == day { return baseline }
+        if baselineRetryDay == day && Date() < baselineRetryAfter { return nil }
+        await loadBaseline(for: day)
+        guard !Task.isCancelled else { return nil }
+        if baseline?.liveDay != day {
+            baselineRetryDay = day
+            baselineRetryAfter = Date().addingTimeInterval(300)
+        }
+        return baseline?.liveDay == day ? baseline : nil
     }
 
     private func loadBaseline(for day: String) async {
@@ -191,11 +319,15 @@ actor ETFWorker: ETFRefreshing {
         let service = service
         let missing = ETFDescriptor.basket.filter { bars[$0.code] == nil }
         let fetched = await concurrently(missing, limit: 6) { etf in
-            (etf.code, try? await service.bars(secid: etf.secid))
+            (etf.code, await etfAttempt(source: "East Money", operation: "history \(etf.code)") {
+                try await service.bars(secid: etf.secid)
+            })
         }
+        guard !Task.isCancelled, barsDay == day else { return }
         for (code, days) in fetched { if let days { bars[code] = days } }
         baseline = ETFBaseline.build(bars: bars, liveDay: day)
-        if baseline != nil { bars = [:] }
+        // Incomplete data must be fetched again, otherwise one partial response blocks recovery all day.
+        if baseline != nil || bars.count == ETFDescriptor.basket.count { bars = [:] }
     }
 }
 
@@ -204,10 +336,17 @@ struct ETFOutcome: Sendable {
     var quotesFailed = false
     var failedMinutes = 0
     var baselineMissing = false
+    var fallbackQuotes = false
+    var fallbackMinutes = 0
 }
 
 protocol ETFRefreshing: Sendable {
     func refresh() async -> ETFOutcome
+    func prepareBaseline(for day: String) async -> ETFBaseline?
+}
+
+extension ETFRefreshing {
+    func prepareBaseline(for day: String) async -> ETFBaseline? { nil }
 }
 
 /// Runs `work` over `items` with at most `limit` in flight.

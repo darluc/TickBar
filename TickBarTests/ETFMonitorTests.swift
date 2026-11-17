@@ -147,10 +147,45 @@ final class ETFDataTests: XCTestCase {
         } + [ETFQuote(code: ETFDescriptor.indexCode, amount: 9e11, changePercent: 1, timestamp: shanghaiMorning)]
     }
 
+    func testStaleDetectionAllowsFiveMinuteDelayAndDetectsOlderSessions() {
+        let current = series(through: 10, amount: 1)
+        XCTAssertFalse(ETFWorker.isStale(current, day: "2026-11-06", slot: 15))
+        XCTAssertTrue(ETFWorker.isStale(current, day: "2026-11-06", slot: 16))
+        XCTAssertTrue(ETFWorker.isStale(current, day: "2026-11-09", slot: 0))
+    }
+
+    func testMinuteCacheRejectsOlderAndTruncatedResponsesAndRetainsGaps() throws {
+        let cached = series(through: 4, amount: 10)
+        XCTAssertNil(ETFWorker.mergeMinutes(cached, series(through: 2, amount: 20)))
+        XCTAssertNil(ETFWorker.mergeMinutes(cached, series(day: "2026-11-05", through: 5, amount: 20)))
+        var incoming = series(through: 5, amount: 20)
+        incoming.amount[2] = nil
+        incoming.close[2] = nil
+        let merged = try XCTUnwrap(ETFWorker.mergeMinutes(cached, incoming))
+        XCTAssertEqual(merged.amount[2], 10)
+        XCTAssertEqual(merged.amount[1], 20, "newer responses can correct historical values")
+        XCTAssertEqual(merged.lastSlot, 5)
+        let nextDay = series(day: "2026-11-09", through: 1, amount: 30)
+        XCTAssertEqual(ETFWorker.mergeMinutes(cached, nextDay)?.day, "2026-11-09")
+    }
+
+    func testQuoteCachePreservesMissingAndOlderSymbols() {
+        let old = quotes()
+        let stale = ETFQuote(code: codes[0], amount: 1, changePercent: 0,
+                             timestamp: shanghaiMorning.addingTimeInterval(-60))
+        let fresh = ETFQuote(code: codes[1], amount: 99, changePercent: 1,
+                             timestamp: shanghaiMorning.addingTimeInterval(60))
+        let merged = Dictionary(uniqueKeysWithValues: ETFWorker.mergeQuotes(old, [stale, fresh]).map { ($0.code, $0) })
+        XCTAssertEqual(merged.count, old.count)
+        XCTAssertEqual(merged[codes[0]], old[0])
+        XCTAssertEqual(merged[codes[1]], fresh)
+        XCTAssertEqual(merged[codes[2]], old[2])
+    }
+
     func testDisplayTotalsRankingAndMinutes() {
         var minutes = Dictionary(uniqueKeysWithValues: codes.map { ($0, series(through: 2, amount: 1e6)) })
         minutes[ETFDescriptor.indexCode] = series(through: 3, amount: 5e9)
-        let d = ETFDisplay.build(quotes: quotes(), minutes: minutes, fresh: Set(minutes.keys), baseline: nil)
+        let d = ETFDisplay.build(quotes: quotes(), minutes: minutes, baseline: nil)
         XCTAssertEqual(d.day, "2026-11-06")
         XCTAssertEqual(d.quoteCount, 20)
         XCTAssertEqual(d.minuteCount, 20)
@@ -167,15 +202,14 @@ final class ETFDataTests: XCTestCase {
         XCTAssertNil(d.paceAverage)
     }
 
-    func testDisplayStopsAtNewestMinuteEveryFreshETFReported() {
+    func testDisplayStopsAtNewestMinuteEveryCachedETFReported() {
         var minutes = Dictionary(uniqueKeysWithValues: codes.map { ($0, series(through: 5, amount: 1)) })
         minutes[codes[0]] = series(through: 4, amount: 1)      // answered a minute late
         minutes[codes[1]] = series(through: 1, amount: 1)      // request failed: stale series
-        let fresh = Set(minutes.keys).subtracting([codes[1]])
-        let d = ETFDisplay.build(quotes: quotes(), minutes: minutes, fresh: fresh, baseline: nil)
-        XCTAssertEqual(d.liveSlot, 4)
-        XCTAssertEqual(d.bars, [20, 20, 19, 19, 19], "a stale ETF contributes only the minutes it has")
-        XCTAssertEqual(ETFDisplay.build(quotes: quotes(), minutes: minutes, fresh: [], baseline: nil).liveSlot, 1)
+        let d = ETFDisplay.build(quotes: quotes(), minutes: minutes, baseline: nil)
+        XCTAssertEqual(d.liveSlot, 1)
+        XCTAssertEqual(d.bars, [20, 20], "a stale ETF must not be counted as zero in later minutes")
+        XCTAssertEqual(ETFDisplay.build(quotes: quotes(), minutes: minutes, baseline: nil).liveSlot, 1)
     }
 
     func testDisplayExcludesOtherDaysAndMissingETFs() {
@@ -183,11 +217,11 @@ final class ETFDataTests: XCTestCase {
         minutes[codes[0]] = series(day: "2026-11-05", through: 1, amount: 1)
         var q = quotes()
         q[1] = ETFQuote(code: codes[1], amount: 5e8, changePercent: 0, timestamp: shanghaiMorning.addingTimeInterval(-86_400))
-        let d = ETFDisplay.build(quotes: q, minutes: minutes, fresh: Set(minutes.keys), baseline: nil)
+        let d = ETFDisplay.build(quotes: q, minutes: minutes, baseline: nil)
         XCTAssertEqual(d.minuteCount, 19)
         XCTAssertEqual(d.quoteCount, 19)
         XCTAssertEqual(d.bars, [19, 19])
-        XCTAssertTrue(ETFDisplay.build(quotes: [], minutes: [:], fresh: [], baseline: nil).isEmpty)
+        XCTAssertTrue(ETFDisplay.build(quotes: [], minutes: [:], baseline: nil).isEmpty)
     }
 
     func testPaceComparesRunningTotalAtTheSameMinute() throws {
@@ -196,21 +230,21 @@ final class ETFDataTests: XCTestCase {
         let flat = ETFCurve(slots: slots, values: slots.map { Double($0) * 10 })
         let baseline = ETFBaseline(liveDay: "2026-11-06", previousDay: "2026-11-05", previous: flat,
                                    average: ETFCurve(slots: slots, values: slots.map { Double($0) * 40 }), averageDays: 20)
-        let d = ETFDisplay.build(quotes: quotes(), minutes: minutes, fresh: Set(minutes.keys), baseline: baseline)
+        let d = ETFDisplay.build(quotes: quotes(), minutes: minutes, baseline: baseline)
         // 11 minutes x 20 ETFs = 220 so far; previous day had 100 at slot 10, the mean 400.
         XCTAssertEqual(try XCTUnwrap(d.pacePrevious), 220.0 / 100 - 1, accuracy: 1e-9)
         XCTAssertEqual(try XCTUnwrap(d.paceAverage), 220.0 / 400 - 1, accuracy: 1e-9)
         XCTAssertEqual(d.previousDay, "2026-11-05")
         let stale = ETFBaseline(liveDay: "2026-11-05", previousDay: "2026-11-04", previous: flat, average: nil, averageDays: 0)
-        XCTAssertNil(ETFDisplay.build(quotes: quotes(), minutes: minutes, fresh: Set(minutes.keys), baseline: stale).previous)
+        XCTAssertNil(ETFDisplay.build(quotes: quotes(), minutes: minutes, baseline: stale).previous)
     }
 
     func testIdenticalRefreshProducesEqualDisplay() {
         let minutes = Dictionary(uniqueKeysWithValues: codes.map { ($0, series(through: 3, amount: 1e6)) })
-        let a = ETFDisplay.build(quotes: quotes(), minutes: minutes, fresh: Set(minutes.keys), baseline: nil)
-        let b = ETFDisplay.build(quotes: quotes(), minutes: minutes, fresh: Set(minutes.keys), baseline: nil)
+        let a = ETFDisplay.build(quotes: quotes(), minutes: minutes, baseline: nil)
+        let b = ETFDisplay.build(quotes: quotes(), minutes: minutes, baseline: nil)
         XCTAssertEqual(a, b, "an unchanged refresh must not republish the board")
-        XCTAssertNotEqual(a, ETFDisplay.build(quotes: quotes(offset: 1), minutes: minutes, fresh: Set(minutes.keys), baseline: nil))
+        XCTAssertNotEqual(a, ETFDisplay.build(quotes: quotes(offset: 1), minutes: minutes, baseline: nil))
     }
 
     // MARK: Rendering
@@ -223,7 +257,7 @@ final class ETFDataTests: XCTestCase {
         let curve = ETFCurve(slots: slots, values: slots.map { Double($0) * 18e6 })
         let baseline = ETFBaseline(liveDay: "2026-11-06", previousDay: "2026-11-05", previous: curve,
                                    average: ETFCurve(slots: slots, values: slots.map { Double($0) * 22e6 }), averageDays: 20)
-        let display = ETFDisplay.build(quotes: quotes(), minutes: minutes, fresh: Set(minutes.keys), baseline: baseline)
+        let display = ETFDisplay.build(quotes: quotes(), minutes: minutes, baseline: baseline)
         let renderer = ImageRenderer(content: ETFContent(display: display, scheme: .east).frame(width: 486).padding(12)
             .background(Color(nsColor: .windowBackgroundColor)))
         renderer.scale = 2
@@ -245,11 +279,66 @@ final class ETFMonitorSchedulingTests: XCTestCase {
         private let lock = NSLock()
         private var count = 0
         var outcome = ETFOutcome()
+        var preparedBaseline: ETFBaseline?
+        func prepareBaseline(for day: String) async -> ETFBaseline? { preparedBaseline }
         var calls: Int { lock.lock(); defer { lock.unlock() }; return count }
         func refresh() async -> ETFOutcome {
             lock.lock(); count += 1; lock.unlock()
             return outcome
         }
+    }
+
+    private actor LifecycleWorker: ETFRefreshing {
+        let outcome: ETFOutcome
+        let baseline: ETFBaseline
+        var holdRefresh: Bool
+        var firstBaselineWaits: Bool
+        var firstBaselineFails: Bool
+        var refreshStarted = false
+        var refreshContinuation: CheckedContinuation<ETFOutcome, Never>?
+        var baselineCalls = 0
+
+        init(outcome: ETFOutcome, baseline: ETFBaseline, holdRefresh: Bool = false,
+             firstBaselineWaits: Bool = false, firstBaselineFails: Bool = false) {
+            self.outcome = outcome
+            self.baseline = baseline
+            self.holdRefresh = holdRefresh
+            self.firstBaselineWaits = firstBaselineWaits
+            self.firstBaselineFails = firstBaselineFails
+        }
+
+        func refresh() async -> ETFOutcome {
+            refreshStarted = true
+            if holdRefresh {
+                return await withCheckedContinuation { refreshContinuation = $0 }
+            }
+            return outcome
+        }
+
+        func finishRefresh() {
+            refreshContinuation?.resume(returning: outcome)
+            refreshContinuation = nil
+        }
+
+        func prepareBaseline(for day: String) async -> ETFBaseline? {
+            baselineCalls += 1
+            if baselineCalls == 1 && firstBaselineWaits {
+                do { try await Task.sleep(nanoseconds: 10_000_000_000) } catch { return nil }
+            }
+            if baselineCalls == 1 && firstBaselineFails { return nil }
+            return baseline
+        }
+    }
+
+    private func lifecycleData() -> (ETFOutcome, ETFBaseline) {
+        var display = ETFDisplay()
+        display.day = "2026-11-06"
+        display.cumulative = [10, 40]
+        display.bars = [10, 30]
+        let curve = ETFCurve(slots: [0, 1], values: [1, 20])
+        let baseline = ETFBaseline(liveDay: display.day, previousDay: "2026-11-05",
+                                   previous: curve, average: nil, averageDays: 0)
+        return (ETFOutcome(display: display, baselineMissing: true), baseline)
     }
 
     private var defaultsBackup: Bool!
@@ -266,7 +355,7 @@ final class ETFMonitorSchedulingTests: XCTestCase {
 
     private func settle(_ seconds: Double = 0.3) async { try? await Task.sleep(nanoseconds: UInt64(seconds * 1e9)) }
 
-    private func makeMonitor(_ worker: FakeWorker, market: MarketStatus = .open) -> ETFMonitor {
+    private func makeMonitor(_ worker: ETFRefreshing, market: MarketStatus = .open) -> ETFMonitor {
         let monitor = ETFMonitor(worker: worker, interval: 0.05, marketStatus: { market })
         monitor.selectedPage = true
         monitors.append(monitor)
@@ -343,6 +432,104 @@ final class ETFMonitorSchedulingTests: XCTestCase {
         monitor.togglePause()
         await settle()
         XCTAssertGreaterThan(worker.calls, 1, "resuming refreshes again")
+    }
+
+    func testPausingDuringAutomaticRefreshDoesNotStartBaseline() async {
+        let (outcome, baseline) = lifecycleData()
+        let worker = LifecycleWorker(outcome: outcome, baseline: baseline, holdRefresh: true)
+        let monitor = makeMonitor(worker, market: .closed)
+        monitor.setVisible(.popover, true)
+        await settle(0.05)
+        let started = await worker.refreshStarted
+        XCTAssertTrue(started)
+        monitor.togglePause()
+        await worker.finishRefresh()
+        await settle(0.05)
+        let calls = await worker.baselineCalls
+        XCTAssertEqual(calls, 0)
+    }
+
+    func testManualRefreshWhilePausedCanLoadBaseline() async {
+        let (outcome, baseline) = lifecycleData()
+        let worker = LifecycleWorker(outcome: outcome, baseline: baseline)
+        let monitor = makeMonitor(worker, market: .closed)
+        monitor.togglePause()
+        await monitor.refresh()
+        await settle(0.05)
+        let calls = await worker.baselineCalls
+        XCTAssertEqual(calls, 1)
+        XCTAssertEqual(monitor.board.display.previousDay, "2026-11-05")
+    }
+
+    func testReopeningRestartsCancelledBaselineWithoutRefreshingQuotes() async {
+        let (outcome, baseline) = lifecycleData()
+        let worker = LifecycleWorker(outcome: outcome, baseline: baseline, firstBaselineWaits: true)
+        let monitor = makeMonitor(worker, market: .closed)
+        monitor.setVisible(.popover, true)
+        await settle(0.05)
+        let initialCalls = await worker.baselineCalls
+        XCTAssertEqual(initialCalls, 1)
+        monitor.setVisible(.popover, false)
+        monitor.setVisible(.popover, true)
+        await settle(0.1)
+        let calls = await worker.baselineCalls
+        XCTAssertEqual(calls, 2)
+        XCTAssertEqual(monitor.board.display.previousDay, "2026-11-05")
+    }
+
+    func testClosedMarketRetriesFailedBaselineWhileVisible() async {
+        let (outcome, baseline) = lifecycleData()
+        let worker = LifecycleWorker(outcome: outcome, baseline: baseline, firstBaselineFails: true)
+        let monitor = makeMonitor(worker, market: .closed)
+        monitor.setVisible(.popover, true)
+        await settle(0.2)
+        let calls = await worker.baselineCalls
+        XCTAssertEqual(calls, 2)
+        XCTAssertEqual(monitor.board.display.previousDay, "2026-11-05")
+    }
+
+    func testBaselineLoadsSeparatelyAndUpdatesTheCurrentDisplay() async {
+        let worker = FakeWorker()
+        let curve = ETFCurve(slots: [0, 1], values: [1, 20])
+        worker.preparedBaseline = ETFBaseline(liveDay: "2026-11-06", previousDay: "2026-11-05",
+                                             previous: curve, average: nil, averageDays: 0)
+        var display = ETFDisplay()
+        display.day = "2026-11-06"
+        display.cumulative = [10, 40]
+        display.bars = [10, 30]
+        worker.outcome = ETFOutcome(display: display, baselineMissing: true)
+        let monitor = makeMonitor(worker, market: .closed)
+        await monitor.refresh()
+        await settle(0.05)
+        XCTAssertEqual(monitor.board.display.previousDay, "2026-11-05")
+        XCTAssertEqual(monitor.board.display.pacePrevious, 1)
+    }
+
+    func testNewSessionWaitsForCompleteBasket() async {
+        let worker = FakeWorker()
+        let monitor = makeMonitor(worker, market: .closed)
+        var previous = ETFDisplay()
+        previous.day = "2026-11-06"
+        previous.quoteCount = 20
+        previous.minuteCount = 20
+        previous.total = 123
+        worker.outcome.display = previous
+        await monitor.refresh()
+
+        var partial = ETFDisplay()
+        partial.day = "2026-11-09"
+        partial.quoteCount = 1
+        partial.minuteCount = 1
+        worker.outcome.display = partial
+        await monitor.refresh()
+        XCTAssertEqual(monitor.board.display, previous)
+        XCTAssertTrue(monitor.status.warning)
+
+        partial.quoteCount = 20
+        partial.minuteCount = 20
+        worker.outcome.display = partial
+        await monitor.refresh()
+        XCTAssertEqual(monitor.board.display, partial)
     }
 
     func testFailedRefreshKeepsDataAndFlagsWarning() async {

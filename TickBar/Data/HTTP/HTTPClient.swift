@@ -2,12 +2,14 @@ import Foundation
 
 enum HTTPError: Error, CustomStringConvertible {
     case badStatus(Int)
+    case rateLimited(TimeInterval?)
     case decoding
     case transport(Error)
 
     var description: String {
         switch self {
         case .badStatus(let code): return "HTTP \(code)"
+        case .rateLimited: return "HTTP 429"
         case .decoding: return "decoding failed"
         case .transport(let e):    return "transport: \(e.localizedDescription)"
         }
@@ -46,6 +48,9 @@ struct HTTPClient {
         do {
             let (data, resp) = try await session.data(for: req)
             if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                if http.statusCode == 429 {
+                    throw HTTPError.rateLimited(Self.retryAfter(http.value(forHTTPHeaderField: "Retry-After")))
+                }
                 throw HTTPError.badStatus(http.statusCode)
             }
             return data
@@ -54,6 +59,16 @@ struct HTTPClient {
         } catch {
             throw HTTPError.transport(error)
         }
+    }
+
+    static func retryAfter(_ header: String?, now: Date = Date()) -> TimeInterval? {
+        guard let header else { return nil }
+        if let seconds = Double(header), seconds.isFinite, seconds >= 0 { return seconds }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        return formatter.date(from: header).map { max(0, $0.timeIntervalSince(now)) }
     }
 
     func fetchString(url: URL, encoding: String.Encoding = .utf8, headers: [String: String] = [:]) async throws -> String {

@@ -3,6 +3,7 @@ import SwiftUI
 struct ETFPanel: View, Equatable {
     @ObservedObject var board: ETFBoard
     @EnvironmentObject var prefs: TickerPreferences
+    @State private var showHoldings = false
 
     /// The parent re-renders on every status flip; the panel only cares about its own data.
     static func == (a: Self, b: Self) -> Bool { a.board === b.board }
@@ -11,8 +12,17 @@ struct ETFPanel: View, Equatable {
         let display = board.display
         VStack(spacing: 0) {
             ETFHeader(day: display.day, covered: display.quoteCount)
-            ScrollView {
-                ETFContent(display: display, scheme: prefs.colorScheme).padding(12)
+            Picker("", selection: $showHoldings) {
+                Text(L("holdings.tab.market")).tag(false)
+                Text(L("holdings.tab.observe")).tag(true)
+            }
+            .pickerStyle(.segmented).labelsHidden().padding(.horizontal, 12)
+            if showHoldings {
+                HoldingsPanel()
+            } else {
+                ScrollView {
+                    ETFContent(display: display, scheme: prefs.colorScheme).padding(12)
+                }
             }
         }
     }
