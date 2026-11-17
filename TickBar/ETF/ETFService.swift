@@ -3,14 +3,17 @@ import Foundation
 /// East Money requests for the ETF panel. Everything is fetched live; nothing is stored.
 struct ETFService: Sendable {
     let http: HTTPClient
-    init(http: HTTPClient = HTTPClient(defaultHeaders: ["Referer": "https://quote.eastmoney.com/"])) {
+    let gate: ETFRequestGate
+    init(http: HTTPClient = HTTPClient(defaultHeaders: ["Referer": "https://quote.eastmoney.com/"]),
+         gate: ETFRequestGate = ETFRequestGate()) {
         self.http = http
+        self.gate = gate
     }
 
     private func fetch(_ host: String, _ path: String, _ query: [String: String]) async throws -> Data {
         var url = URLComponents(string: "https://\(host)/api/qt/\(path)")!
         url.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
-        return try await http.fetchData(url: url.url!, timeout: 10)
+        return try await etfRequest(gate: gate) { try await http.fetchData(url: url.url!, timeout: 10) }
     }
 
     /// One batched request: turnover and change for the 20 ETFs plus the index.

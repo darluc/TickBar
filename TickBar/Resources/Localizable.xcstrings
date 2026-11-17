@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "zh-Hans",
   "strings": {
+    "etf.status.fallback": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "腾讯备用 · 分时 %d 只" } }, "en": { "stringUnit": { "state": "translated", "value": "Tencent fallback · %d minute series" } } } },
     "etf.error.rollover": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "新交易日数据不完整，保留上一交易日" } }, "en": { "stringUnit": { "state": "translated", "value": "New session data incomplete; showing previous session" } } } },
     "holdings.tab.market": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "ETF 成交" } }, "en": { "stringUnit": { "state": "translated", "value": "ETF trading" } } } },
     "holdings.tab.observe": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "持仓观察" } }, "en": { "stringUnit": { "state": "translated", "value": "Holdings" } } } },

@@ -37,9 +37,12 @@ final class ETFMonitor: ObservableObject {
     private let interval: UInt64
     private var surfaces = Set<ETFSurface>()
     private var loop: Task<Void, Never>?
+    private var baselineTask: Task<Void, Never>?
+    private var baselineDay = ""
     private var refreshing = false
     private var lastSuccess: Date?
     private var problems: [String] = []
+    private var fallbackStatus = ""
 
     init(worker: ETFRefreshing = ETFWorker(), clock: MarketClock = MarketClock(),
          interval: TimeInterval = 60, marketStatus: (() -> MarketStatus)? = nil) {
@@ -59,8 +62,13 @@ final class ETFMonitor: ObservableObject {
 
     func togglePause() {
         paused.toggle()
+        if paused {
+            baselineTask?.cancel()
+            baselineTask = nil
+            baselineDay = ""
+        }
         publishStatus()
-        if !paused, loop != nil { Task { await refresh() } }
+        if !paused, loop != nil { Task { await refresh(automatic: true) } }
     }
 
     /// Polling exists only while the ETF page is on screen; hiding it cancels in-flight requests.
@@ -71,20 +79,32 @@ final class ETFMonitor: ObservableObject {
         } else {
             loop?.cancel()
             loop = nil
+            baselineTask?.cancel()
+            baselineTask = nil
+            baselineDay = ""
         }
     }
 
     private func run() async {
         // A refresh cancelled by the previous hide may still be unwinding.
         while refreshing && !Task.isCancelled { try? await Task.sleep(nanoseconds: 50_000_000) }
-        if !paused, lastSuccess.map({ Date().timeIntervalSince($0) > 20 }) ?? true { await refresh() }
+        if !paused, lastSuccess.map({ Date().timeIntervalSince($0) > 20 }) ?? true {
+            await refresh(automatic: true)
+        }
+        if !paused { resumeBaselineIfNeeded() }
         while !Task.isCancelled {
             do { try await Task.sleep(nanoseconds: interval) } catch { return }
-            if !paused && marketStatus() == .open { await refresh() } else { publishStatus() }
+            if !paused && marketStatus() == .open { await refresh(automatic: true) }
+            else {
+                if !paused { resumeBaselineIfNeeded() }
+                publishStatus()
+            }
         }
     }
 
-    func refresh() async {
+    func refresh() async { await refresh(automatic: false) }
+
+    private func refresh(automatic: Bool) async {
         guard !refreshing else { return }
         refreshing = true
         publishStatus()
@@ -104,7 +124,37 @@ final class ETFMonitor: ObservableObject {
         if outcome.reachedServer { lastSuccess = Date() }
         problems = outcome.problems
         if incompleteRollover { problems.append(L("etf.error.rollover", comment: "新交易日数据不完整，保留上一交易日")) }
+        fallbackStatus = outcome.fallbackQuotes || outcome.fallbackMinutes > 0
+            ? String(format: L("etf.status.fallback"), outcome.fallbackMinutes) : ""
         publishStatus()
+        if !incompleteRollover, outcome.baselineMissing, !next.day.isEmpty,
+           !automatic || (!paused && selectedPage && !surfaces.isEmpty) {
+            startBaseline(for: next.day)
+        }
+    }
+
+    private func resumeBaselineIfNeeded() {
+        let display = board.display
+        guard !display.isEmpty, display.previous == nil else { return }
+        startBaseline(for: display.day)
+    }
+
+    private func startBaseline(for day: String) {
+        if baselineTask != nil && baselineDay == day { return }
+        baselineTask?.cancel()
+        baselineDay = day
+        baselineTask = Task { [weak self, worker] in
+            let result = await worker.prepareBaseline(for: day)
+            guard let self, !Task.isCancelled, self.baselineDay == day else { return }
+            self.baselineTask = nil
+            self.baselineDay = ""
+            guard let result, self.board.display.day == day else { return }
+            var display = self.board.display
+            display.applyBaseline(result)
+            if display != self.board.display { self.board.display = display }
+            self.problems.removeAll { $0 == L("etf.error.baseline", comment: "对比曲线暂不可用") }
+            self.publishStatus()
+        }
     }
 
     private func publishStatus() {
@@ -128,6 +178,7 @@ final class ETFMonitor: ObservableObject {
             case .closed: next.text = L("etf.status.closed", comment: "已收盘")
             }
         }
+        if !fallbackStatus.isEmpty { next.text += " · " + fallbackStatus }
         if next != status { status = next }
     }
 }
