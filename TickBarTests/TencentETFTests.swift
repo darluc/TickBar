@@ -90,6 +90,42 @@ final class TencentETFTests: XCTestCase {
         XCTAssertEqual(outcome.fallbackMinutes, 20)
         XCTAssertTrue(outcome.baselineMissing)
     }
+
+    func testBaselineRequestsUseTheirOwnGate() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [ETFHistoryProtocol.self]
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel() }
+        let realtime = ETFRequestGate(spacing: 0)
+        await realtime.rateLimited(for: 60)
+        let service = ETFService(http: HTTPClient(session: session), gate: realtime,
+                                 historyGate: ETFRequestGate(spacing: 0))
+
+        do {
+            _ = try await service.minutes(secid: "1.510300")
+            XCTFail("realtime requests must still honour the cooldown")
+        } catch HTTPError.rateLimited { }
+
+        let days = try await service.bars(secid: "1.510300")
+        XCTAssertEqual(days["2026-11-18"]?.compactMap { $0 }.count, 2,
+                       "a realtime cooldown must not swallow the history request")
+    }
+}
+
+private final class ETFHistoryProtocol: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        let payload = ["data": ["klines": ["2026-11-18 09:35,10", "2026-11-18 09:40,20"]]]
+        let data = try! JSONSerialization.data(withJSONObject: payload)
+        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }
 
 private final class ETFStaleSourceProtocol: URLProtocol {

@@ -39,6 +39,7 @@ final class ETFMonitor: ObservableObject {
     private var loop: Task<Void, Never>?
     private var baselineTask: Task<Void, Never>?
     private var baselineDay = ""
+    private var baselineFailureDay = ""
     private var refreshing = false
     private var lastSuccess: Date?
     private var problems: [String] = []
@@ -124,6 +125,10 @@ final class ETFMonitor: ObservableObject {
         if outcome.reachedServer { lastSuccess = Date() }
         problems = outcome.problems
         if incompleteRollover { problems.append(L("etf.error.rollover", comment: "新交易日数据不完整，保留上一交易日")) }
+        if board.display.previous != nil { baselineFailureDay = "" }
+        if !baselineFailureDay.isEmpty, baselineFailureDay == board.display.day, board.display.previous == nil {
+            problems.append(L("etf.error.baseline", comment: "对比曲线暂不可用"))
+        }
         fallbackStatus = outcome.fallbackQuotes || outcome.fallbackMinutes > 0
             ? String(format: L("etf.status.fallback"), outcome.fallbackMinutes) : ""
         publishStatus()
@@ -148,11 +153,20 @@ final class ETFMonitor: ObservableObject {
             guard let self, !Task.isCancelled, self.baselineDay == day else { return }
             self.baselineTask = nil
             self.baselineDay = ""
-            guard let result, self.board.display.day == day else { return }
-            var display = self.board.display
-            display.applyBaseline(result)
-            if display != self.board.display { self.board.display = display }
-            self.problems.removeAll { $0 == L("etf.error.baseline", comment: "对比曲线暂不可用") }
+            guard self.board.display.day == day else { return }
+            if let result {
+                var display = self.board.display
+                display.applyBaseline(result)
+                if display != self.board.display { self.board.display = display }
+                self.baselineFailureDay = ""
+                self.problems.removeAll { $0 == L("etf.error.baseline", comment: "对比曲线暂不可用") }
+            } else {
+                // Only report missing curves once an attempt has actually failed; before
+                // that the baseline is still loading, not unavailable.
+                self.baselineFailureDay = day
+                let message = L("etf.error.baseline", comment: "对比曲线暂不可用")
+                if !self.problems.contains(message) { self.problems.append(message) }
+            }
             self.publishStatus()
         }
     }
@@ -191,7 +205,6 @@ extension ETFOutcome {
         var list: [String] = []
         if quotesFailed { list.append(L("etf.error.quotes", comment: "行情获取失败，保留已有数据")) }
         if failedMinutes > 0 { list.append(String(format: L("etf.error.minutes", comment: "%d 只分时获取失败"), failedMinutes)) }
-        if baselineMissing && !display.isEmpty { list.append(L("etf.error.baseline", comment: "对比曲线暂不可用")) }
         return list
     }
 }

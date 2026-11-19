@@ -486,6 +486,27 @@ final class ETFMonitorSchedulingTests: XCTestCase {
         let calls = await worker.baselineCalls
         XCTAssertEqual(calls, 2)
         XCTAssertEqual(monitor.board.display.previousDay, "2026-11-05")
+        XCTAssertFalse(monitor.status.warning, "a loaded baseline clears the failure warning")
+    }
+
+    func testBaselineWarningAppearsOnlyAfterAFailedAttempt() async {
+        let (outcome, baseline) = lifecycleData()
+        let worker = LifecycleWorker(outcome: outcome, baseline: baseline, firstBaselineFails: true)
+        let monitor = makeMonitor(worker, market: .closed)
+        await monitor.refresh()
+        await settle(0.1)
+        XCTAssertTrue(monitor.status.warning)
+        XCTAssertEqual(monitor.status.text, L("etf.error.baseline"))
+    }
+
+    func testBaselineStillLoadingDoesNotWarn() async {
+        let (outcome, baseline) = lifecycleData()
+        let worker = LifecycleWorker(outcome: outcome, baseline: baseline, firstBaselineWaits: true)
+        let monitor = makeMonitor(worker, market: .closed)
+        await monitor.refresh()
+        await settle(0.1)
+        XCTAssertFalse(monitor.status.warning, "loading the baseline is not a failure")
+        XCTAssertFalse(monitor.status.text.contains(L("etf.error.baseline")))
     }
 
     func testBaselineLoadsSeparatelyAndUpdatesTheCurrentDisplay() async {
