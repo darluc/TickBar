@@ -3,14 +3,21 @@ import Foundation
 /// East Money requests for the ETF panel. Everything is fetched live; nothing is stored.
 struct ETFService: Sendable {
     let http: HTTPClient
+    /// Realtime quotes and minutes on `push2`.
     let gate: ETFRequestGate
+    /// Daily history on `push2his`. Its own gate keeps a realtime 429 cooldown from
+    /// swallowing the once-a-day baseline load.
+    let historyGate: ETFRequestGate
     init(http: HTTPClient = HTTPClient(defaultHeaders: ["Referer": "https://quote.eastmoney.com/"]),
-         gate: ETFRequestGate = ETFRequestGate()) {
+         gate: ETFRequestGate = ETFRequestGate(),
+         historyGate: ETFRequestGate = ETFRequestGate()) {
         self.http = http
         self.gate = gate
+        self.historyGate = historyGate
     }
 
-    private func fetch(_ host: String, _ path: String, _ query: [String: String]) async throws -> Data {
+    private func fetch(_ host: String, _ path: String, _ query: [String: String],
+                       gate: ETFRequestGate) async throws -> Data {
         var url = URLComponents(string: "https://\(host)/api/qt/\(path)")!
         url.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         return try await etfRequest(gate: gate) { try await http.fetchData(url: url.url!, timeout: 10) }
@@ -21,7 +28,7 @@ struct ETFService: Sendable {
         let data = try await fetch("push2.eastmoney.com", "ulist.np/get", [
             "fltt": "2", "invt": "2", "fields": "f12,f3,f6,f124",
             "secids": (ETFDescriptor.basket.map(\.secid) + [ETFDescriptor.indexSecid]).joined(separator: ",")
-        ])
+        ], gate: gate)
         let values = Self.parseQuotes(data)
         guard !values.isEmpty else { throw ETFDataError.invalidResponse }
         return values
@@ -32,7 +39,7 @@ struct ETFService: Sendable {
         let data = try await fetch("push2.eastmoney.com", "stock/trends2/get", [
             "secid": secid, "fields1": "f1,f2,f3,f4,f5,f6,f7",
             "fields2": "f51,f52,f53,f54,f55,f56,f57,f58", "ndays": "1", "iscr": "0"
-        ])
+        ], gate: gate)
         guard let series = Self.parseMinutes(Self.body(data)?.trends ?? []) else { throw ETFDataError.invalidResponse }
         return series
     }
@@ -42,7 +49,7 @@ struct ETFService: Sendable {
         let data = try await fetch("push2his.eastmoney.com", "stock/kline/get", [
             "secid": secid, "klt": "5", "fqt": "0", "lmt": "\(ETFTime.barsPerDay * 21)", "end": "20500101",
             "fields1": "f1,f2,f3", "fields2": "f51,f57"
-        ])
+        ], gate: historyGate)
         let days = Self.parseBars(Self.body(data)?.klines ?? [])
         guard !days.isEmpty else { throw ETFDataError.invalidResponse }
         return days
