@@ -56,7 +56,7 @@ struct WatchlistTab: View {
                             )
                             .contextMenu {
                                 if StockVolumeService.supports(item.symbol) {
-                                    Button(L("volume.title")) {
+                                    Button(L("stockAnalysis.title")) {
                                         StockVolumeWindowController.shared.show(
                                             symbol: item.symbol,
                                             name: refresher.quotes[item.symbol]?.name ?? item.name

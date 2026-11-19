@@ -65,7 +65,7 @@ struct HoldingsService {
         var url = URLComponents(string: "https://datacenter-web.eastmoney.com/api/data/v1/get")!
         url.queryItems = [
             URLQueryItem(name: "reportName", value: "RPT_F10_EH_FREEHOLDERS"),
-            URLQueryItem(name: "columns", value: "ALL"),
+            URLQueryItem(name: "columns", value: "SECURITY_CODE,HOLDER_NAME,END_DATE,NOTICE_DATE,HOLD_NUM,FREE_HOLDNUM_RATIO"),
             URLQueryItem(name: "filter", value: "(SECURITY_CODE=\"\(code)\")"),
             URLQueryItem(name: "pageNumber", value: "1"),
             URLQueryItem(name: "pageSize", value: "200"),

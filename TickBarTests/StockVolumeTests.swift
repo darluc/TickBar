@@ -319,9 +319,17 @@ final class StockVolumeMonitorTests: XCTestCase {
         let model = monitor(worker)
         model.setVisible(true)
         try await settle(model)
+        let holdings = StockHoldingsMonitor(code: "000001", name: "平安银行", cacheURL: nil) { code, name in
+            StockHoldingResult(code: code, name: name, latestPeriod: "2026-09-30 00:00:00", holdings: [
+                DisclosedHolding(code: code, name: name, holder: "中央汇金资产管理有限责任公司",
+                                 period: "2026-09-30 00:00:00", notice: "2026-10-30 00:00:00",
+                                 shares: 250_000_000, percent: 2.5)
+            ])
+        }
         for mode in StockVolumeChartMode.allCases {
             for scheme in [ColorScheme.light, .dark] {
-                let view = StockVolumePanel(monitor: model, chartMode: mode).environment(\.colorScheme, scheme)
+                let view = StockVolumePanel(monitor: model, chartMode: mode, holdings: holdings)
+                    .environment(\.colorScheme, scheme)
                 let host = NSHostingView(rootView: view)
                 let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 780, height: 720),
                                       styleMask: [.titled], backing: .buffered, defer: false)

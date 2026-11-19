@@ -98,7 +98,7 @@ final class StockVolumeWindowController: NSObject, NSWindowDelegate {
         let model = StockVolumeMonitor(symbol: symbol, name: name)
         let hosting = NSHostingController(rootView: StockVolumePanel(monitor: model))
         let window = NSWindow(contentViewController: hosting)
-        window.title = "\(name) · \(L("volume.title"))"
+        window.title = "\(name) · \(L("stockAnalysis.title"))"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.setContentSize(NSSize(width: 780, height: 720))
         window.minSize = NSSize(width: 680, height: 600)

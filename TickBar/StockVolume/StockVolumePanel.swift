@@ -9,15 +9,19 @@ enum StockVolumeChartMode: String, CaseIterable {
 
 struct StockVolumePanel: View {
     @ObservedObject var monitor: StockVolumeMonitor
+    @StateObject private var holdings: StockHoldingsMonitor
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
     @State private var chartMode: StockVolumeChartMode
     @State private var texture = false
     @State private var selectedSlot: Int?
 
-    init(monitor: StockVolumeMonitor, chartMode: StockVolumeChartMode = .classified) {
+    init(monitor: StockVolumeMonitor, chartMode: StockVolumeChartMode = .classified,
+         holdings: StockHoldingsMonitor? = nil) {
         self.monitor = monitor
         _chartMode = State(initialValue: chartMode)
+        _holdings = StateObject(wrappedValue: holdings
+                                ?? StockHoldingsMonitor(code: monitor.symbol.code, name: monitor.name))
     }
 
     var body: some View {
@@ -36,6 +40,8 @@ struct StockVolumePanel: View {
                     }
                     Text(L("volume.method")).font(.system(size: 11)).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    Divider()
+                    StockHoldingsSection(monitor: holdings)
                 }
                 .padding(.bottom, 4)
             }
@@ -51,7 +57,7 @@ struct StockVolumePanel: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(monitor.name).font(.system(size: 20, weight: .semibold))
-                Text("\(monitor.symbol.code) · \(L("volume.title"))")
+                Text("\(monitor.symbol.code) · \(L("stockAnalysis.title"))")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
             Spacer()

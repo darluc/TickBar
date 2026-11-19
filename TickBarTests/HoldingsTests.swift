@@ -31,4 +31,47 @@ final class HoldingsTests: XCTestCase {
         let data = Data(#"{"success":false,"result":null}"#.utf8)
         XCTAssertThrowsError(try HoldingsService.parseStock(data, code: "600000", name: "测试"))
     }
+
+    @MainActor
+    func testStockHoldingsMonitorLoadsOnceAndRefreshesOnDemand() async {
+        var calls = 0
+        let monitor = StockHoldingsMonitor(code: "600000", name: "测试", cacheURL: nil) { code, name in
+            calls += 1
+            return StockHoldingResult(code: code, name: name, latestPeriod: "2026-09-30 00:00:00", holdings: [])
+        }
+        await monitor.load()
+        await monitor.load()
+        XCTAssertEqual(calls, 1, "opening the panel must not refetch disclosed holdings")
+        XCTAssertEqual(monitor.result?.code, "600000")
+        XCTAssertNotNil(monitor.result?.fetchedAt)
+        XCTAssertNil(monitor.error)
+        await monitor.refresh()
+        XCTAssertEqual(calls, 2)
+        XCTAssertFalse(monitor.loading)
+    }
+
+    @MainActor
+    func testStockHoldingsCacheSkipsFreshRequests() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let cacheURL = directory.appendingPathComponent("holdings.json")
+        var calls = 0
+        let fetch: (String, String) async throws -> StockHoldingResult = { code, name in
+            calls += 1
+            return StockHoldingResult(code: code, name: name, latestPeriod: "2026-09-30 00:00:00", holdings: [])
+        }
+
+        let first = StockHoldingsMonitor(code: "600000", name: "测试", cacheURL: cacheURL, fetch: fetch)
+        await first.load()
+        XCTAssertEqual(calls, 1)
+
+        let second = StockHoldingsMonitor(code: "600000", name: "测试", cacheURL: cacheURL, fetch: fetch)
+        await second.load()
+        XCTAssertEqual(calls, 1, "a fresh cache must avoid another request")
+        XCTAssertEqual(second.result?.code, "600000")
+
+        await second.refresh()
+        XCTAssertEqual(calls, 2, "manual refresh must bypass the cache")
+    }
 }
