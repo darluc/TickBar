@@ -34,7 +34,7 @@ final class ETFMonitor: ObservableObject {
 
     private let worker: ETFRefreshing
     private let marketStatus: () -> MarketStatus
-    private let interval: UInt64
+    private let interval: TimeInterval
     private var surfaces = Set<ETFSurface>()
     private var loop: Task<Void, Never>?
     private var baselineTask: Task<Void, Never>?
@@ -44,15 +44,20 @@ final class ETFMonitor: ObservableObject {
     private var lastSuccess: Date?
     private var problems: [String] = []
     private var fallbackStatus = ""
+    /// Grows while the provider keeps rate limiting, so the panel stops retrying every minute.
+    private var backoff: TimeInterval = 0
 
     init(worker: ETFRefreshing = ETFWorker(), clock: MarketClock = MarketClock(),
          interval: TimeInterval = 60, marketStatus: (() -> MarketStatus)? = nil) {
         self.worker = worker
         self.marketStatus = marketStatus ?? { clock.status(.a) }
-        self.interval = UInt64(interval * 1_000_000_000)
+        self.interval = interval
     }
 
     var isPolling: Bool { loop != nil }
+
+    /// Delay before the next automatic refresh; tests use it to verify backoff.
+    var pollDelay: TimeInterval { max(interval, backoff) }
 
     /// Called by the popover and pinned-window controllers, mirroring `QuoteRefresher.setPopoverOpen`.
     func setVisible(_ surface: ETFSurface, _ visible: Bool) {
@@ -76,6 +81,7 @@ final class ETFMonitor: ObservableObject {
     private func reconcile() {
         if selectedPage && !surfaces.isEmpty {
             guard loop == nil else { return }
+            backoff = 0
             loop = Task { await self.run() }
         } else {
             loop?.cancel()
@@ -94,7 +100,7 @@ final class ETFMonitor: ObservableObject {
         }
         if !paused { resumeBaselineIfNeeded() }
         while !Task.isCancelled {
-            do { try await Task.sleep(nanoseconds: interval) } catch { return }
+            do { try await Task.sleep(nanoseconds: UInt64(pollDelay * 1_000_000_000)) } catch { return }
             if !paused && marketStatus() == .open { await refresh(automatic: true) }
             else {
                 if !paused { resumeBaselineIfNeeded() }
@@ -116,6 +122,9 @@ final class ETFMonitor: ObservableObject {
             publishStatus()
             return
         }
+        // Repeated throttling or transport failures lengthen polling up to 10 minutes;
+        // one healthy round (including a manual refresh) restores the normal interval.
+        backoff = outcome.rateLimited ? min(max(backoff * 2, 60), 600) : 0
         let current = board.display
         let next = outcome.display
         // Keep the last complete session visible while a new day's basket is incomplete.

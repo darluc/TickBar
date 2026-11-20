@@ -20,6 +20,8 @@ actor ETFRequestGate {
         guard cooldownUntil <= Date() else { throw HTTPError.rateLimited(cooldownUntil.timeIntervalSinceNow) }
     }
 
+    func isCoolingDown(now: Date = Date()) -> Bool { cooldownUntil > now }
+
     func rateLimited(for delay: TimeInterval?) {
         let seconds = max(delay ?? 30, 1)
         cooldownUntil = max(cooldownUntil, Date().addingTimeInterval(seconds))

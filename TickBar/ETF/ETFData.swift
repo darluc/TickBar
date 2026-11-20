@@ -112,7 +112,7 @@ struct ETFMinuteSeries: Sendable {
 }
 
 /// Cumulative curve sampled every five minutes (slots 5, 10, ... 240), prefixed by (0, 0).
-struct ETFCurve: Equatable, Sendable {
+struct ETFCurve: Equatable, Sendable, Codable {
     let slots: [Int]
     let values: [Double]
 
