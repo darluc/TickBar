@@ -102,7 +102,7 @@ struct ETFDisplay: Equatable, Sendable {
 }
 
 /// Comparison curves built once per trading day from five-minute bars.
-struct ETFBaseline: Equatable, Sendable {
+struct ETFBaseline: Equatable, Sendable, Codable {
     static let averageWindow = 20
     static let minimumAverageDays = 3
 
@@ -147,11 +147,13 @@ struct ETFBaseline: Equatable, Sendable {
 }
 
 /// Serial owner of the live data. All parsing and aggregation happens here, never on the
-/// main actor, and nothing is written to disk: state is bounded to one day of minutes plus
-/// two comparison curves.
+/// main actor. Only the current day's comparison curves are written to disk; everything
+/// else is bounded to one day of minutes in memory.
 actor ETFWorker: ETFRefreshing {
     private let service: ETFService
     private let fallback: TencentETFService
+    private let historyFallback: SinaETFHistoryService
+    private let baselineCache: ETFBaselineCache
     private var quotes: [ETFQuote] = []
     private var minutes: [String: ETFMinuteSeries] = [:]
     private var bars: [String: [String: [Double?]]] = [:]
@@ -160,9 +162,13 @@ actor ETFWorker: ETFRefreshing {
     private var baselineRetryDay = ""
     private var baselineRetryAfter = Date.distantPast
 
-    init(service: ETFService = ETFService(), fallback: TencentETFService = TencentETFService()) {
+    init(service: ETFService = ETFService(), fallback: TencentETFService = TencentETFService(),
+         historyFallback: SinaETFHistoryService = SinaETFHistoryService(),
+         baselineCache: ETFBaselineCache = ETFBaselineCache()) {
         self.service = service
         self.fallback = fallback
+        self.historyFallback = historyFallback
+        self.baselineCache = baselineCache
     }
 
     func refresh() async -> ETFOutcome {
@@ -258,6 +264,7 @@ actor ETFWorker: ETFRefreshing {
         let display = ETFDisplay.build(quotes: quotes, minutes: minutes, baseline: baseline)
         outcome.baselineMissing = !display.isEmpty && display.previous == nil
         outcome.display = display
+        outcome.rateLimited = await service.gate.isCoolingDown()
         return outcome
     }
 
@@ -304,10 +311,17 @@ actor ETFWorker: ETFRefreshing {
 
     func prepareBaseline(for day: String) async -> ETFBaseline? {
         if baseline?.liveDay == day { return baseline }
+        // Reuse today's curves after a restart or upgrade instead of refetching them.
+        if let cached = baselineCache.load(day: day) {
+            baseline = cached
+            return cached
+        }
         if baselineRetryDay == day && Date() < baselineRetryAfter { return nil }
         await loadBaseline(for: day)
         guard !Task.isCancelled else { return nil }
-        if baseline?.liveDay != day {
+        if let baseline, baseline.liveDay == day {
+            baselineCache.save(baseline)
+        } else {
             baselineRetryDay = day
             baselineRetryAfter = Date().addingTimeInterval(300)
         }
@@ -317,11 +331,19 @@ actor ETFWorker: ETFRefreshing {
     private func loadBaseline(for day: String) async {
         if barsDay != day { bars = [:]; barsDay = day }
         let service = service
+        let historyFallback = historyFallback
         let missing = ETFDescriptor.basket.filter { bars[$0.code] == nil }
-        let fetched = await concurrently(missing, limit: 6) { etf in
-            (etf.code, await etfAttempt(source: "East Money", operation: "history \(etf.code)") {
+        let fetched = await concurrently(missing, limit: 6) { etf -> (String, [String: [Double?]]?) in
+            let primary = await etfAttempt(source: "East Money", operation: "history \(etf.code)") {
                 try await service.bars(secid: etf.secid)
-            })
+            }
+            if let primary { return (etf.code, primary) }
+            // East Money blocks the whole history host under load; Sina serves the same
+            // bar-close-labelled 5-minute turnover, so one source failing does not blank the curves.
+            let value = await etfAttempt(source: "Sina", operation: "history \(etf.code)") {
+                try await historyFallback.bars(code: etf.code)
+            }
+            return (etf.code, value)
         }
         guard !Task.isCancelled, barsDay == day else { return }
         for (code, days) in fetched { if let days { bars[code] = days } }
@@ -338,6 +360,9 @@ struct ETFOutcome: Sendable {
     var baselineMissing = false
     var fallbackQuotes = false
     var fallbackMinutes = 0
+    /// The realtime gate is cooling down after throttling or repeated transport failures;
+    /// automatic polling should back off.
+    var rateLimited = false
 }
 
 protocol ETFRefreshing: Sendable {

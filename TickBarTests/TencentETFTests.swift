@@ -36,12 +36,16 @@ final class TencentETFTests: XCTestCase {
     func testProviderCooldownPreventsNewRequests() async throws {
         let gate = ETFRequestGate(spacing: 0)
         await gate.rateLimited(for: 60)
+        let cooling = await gate.isCoolingDown()
+        XCTAssertTrue(cooling)
         do {
             try await gate.wait()
             XCTFail("expected cooldown")
         } catch HTTPError.rateLimited(let remaining) {
             XCTAssertGreaterThan(remaining ?? 0, 0)
         }
+        let fresh = await ETFRequestGate(spacing: 0).isCoolingDown()
+        XCTAssertFalse(fresh)
     }
 
     func testConsecutiveFailuresCoolDownOnlyThatProvider() async throws {

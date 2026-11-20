@@ -362,6 +362,24 @@ final class ETFMonitorSchedulingTests: XCTestCase {
         return monitor
     }
 
+    func testRepeatedRateLimitsBackOffAutomaticPolling() async {
+        let worker = FakeWorker()
+        var display = ETFDisplay()
+        display.day = "2026-11-06"
+        worker.outcome = ETFOutcome(display: display, rateLimited: true)
+        let monitor = makeMonitor(worker)
+        await monitor.refresh()
+        XCTAssertEqual(monitor.pollDelay, 60)
+        await monitor.refresh()
+        XCTAssertEqual(monitor.pollDelay, 120)
+        await monitor.refresh()
+        XCTAssertEqual(monitor.pollDelay, 240)
+        worker.outcome.rateLimited = false
+        await monitor.refresh()
+        XCTAssertEqual(monitor.pollDelay, 0.05, accuracy: 0.0001,
+                       "a healthy round restores the normal interval")
+    }
+
     func testNothingRunsWhileHidden() async {
         let worker = FakeWorker()
         let monitor = makeMonitor(worker)
