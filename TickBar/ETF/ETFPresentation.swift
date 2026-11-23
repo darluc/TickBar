@@ -302,7 +302,7 @@ actor ETFWorker: ETFRefreshing {
                 toFetch = neverLoaded + Array(behind.prefix(Self.incrementalDetailBatch))
             }
             if !toFetch.isEmpty {
-                let fetched = await concurrently(toFetch, limit: 3) { etf -> (String, String?, [StockVolumeTrade]?, Int?) in
+                let fetched = await concurrently(toFetch, limit: 3) { etf -> (String, [String]?, [StockVolumeTrade]?, Int?) in
                     let slot = nextMinutes[etf.code]?.lastSlot
                     let snapshot = await etfAttempt(source: "East Money", operation: "details \(etf.code)") {
                         try await volumeDetails.details(code: etf.code, secid: etf.secid,
