@@ -257,27 +257,34 @@ final class ETFDataTests: XCTestCase {
 
     func testBasketVolumeBandsAggregateReconciledMinutes() {
         let code = codes[0]
-        var minuteSeries = series(through: 1, amount: 1e6)
-        minuteSeries.amount[0] = 100_000
+        var minuteSeries = series(through: 1, amount: 1)
+        minuteSeries.amount[0] = 1_100_000
         minuteSeries.amount[1] = 50_000
-        let minutes = Dictionary(uniqueKeysWithValues: codes.map { ($0, $0 == code ? minuteSeries : series(through: 1, amount: 0)) })
+        let minutes = Dictionary(uniqueKeysWithValues: codes.map {
+            ($0, $0 == code ? minuteSeries : series(through: 1, amount: 0))
+        })
         let trades: [String: [StockVolumeTrade]] = [
             code: [
-                StockVolumeTrade(slot: 0, hands: 1, estimatedAmount: 60_000, side: 2),
-                StockVolumeTrade(slot: 0, hands: 1, estimatedAmount: 40_000, side: 2),
-                StockVolumeTrade(slot: 1, hands: 1, estimatedAmount: 10_000, side: 2),
-                StockVolumeTrade(slot: 1, hands: 1, estimatedAmount: 40_000, side: 2)
+                StockVolumeTrade(slot: 0, hands: 1, estimatedAmount: 1_000_000, side: 2),
+                StockVolumeTrade(slot: 0, hands: 1, estimatedAmount: 100_000, side: 2),
+                StockVolumeTrade(slot: 1, hands: 1, estimatedAmount: 50_000, side: 2)
             ]
         ]
         let bands = ETFBasketVolumeClassification.aggregate(minutes: minutes, trades: trades,
                                                               day: "2026-11-06", throughSlot: 1)
-        XCTAssertEqual(bands.amounts[StockVolumeBand.large.rawValue], 0)
-        XCTAssertEqual(bands.amounts[StockVolumeBand.medium.rawValue], 60_000)
-        XCTAssertEqual(bands.amounts[StockVolumeBand.small.rawValue], 90_000)
-        XCTAssertEqual(bands.coveredTurnover, 150_000)
-        XCTAssertEqual(bands.referenceTurnover, 150_000)
-        var display = ETFDisplay.build(quotes: quotes(), minutes: minutes, baseline: nil, trades: trades)
-        XCTAssertEqual(display.volumeBands?.amounts, bands.amounts)
+        XCTAssertEqual(bands.amounts[StockVolumeBand.large.rawValue], 1_000_000)
+        XCTAssertEqual(bands.amounts[StockVolumeBand.medium.rawValue], 100_000)
+        XCTAssertEqual(bands.amounts[StockVolumeBand.small.rawValue], 50_000)
+        XCTAssertEqual(bands.coveredTurnover, 1_150_000)
+        XCTAssertEqual(bands.referenceTurnover, 1_150_000)
+        let display = ETFDisplay.build(quotes: quotes(), minutes: minutes, baseline: nil, trades: trades)
+        // Session still open: display classifies through liveSlot - 1 (slot 0 only).
+        let displayBands = ETFBasketVolumeClassification.aggregate(minutes: minutes, trades: trades,
+                                                                   day: "2026-11-06", throughSlot: 0)
+        XCTAssertEqual(display.volumeBands?.amounts, displayBands.amounts)
+        XCTAssertEqual(display.volumeBands?.amounts[StockVolumeBand.large.rawValue], 1_000_000)
+        XCTAssertEqual(display.volumeBands?.amounts[StockVolumeBand.medium.rawValue], 100_000)
+        XCTAssertEqual(display.volumeBands?.amounts[StockVolumeBand.small.rawValue], 0)
     }
 
     // MARK: Rendering
