@@ -66,6 +66,8 @@ struct ETFContent: View {
                 cards
                 if let bands = display.volumeBands {
                     volumeBandsRow(bands)
+                } else if display.minuteCount > 0 {
+                    volumeBandsUnavailableRow
                 }
                 if display.quoteCount < ETFDescriptor.basket.count || display.minuteCount < ETFDescriptor.basket.count {
                     Text(String(format: L("etf.partial", comment: "数据不完整：行情 %d/20，分时 %d/20"),
@@ -137,6 +139,17 @@ struct ETFContent: View {
                 + Text(unit.isEmpty ? "" : " \(unit)").font(.system(size: 11)).foregroundColor(.secondary))
                 .monospacedDigit()
             Text(caption).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading).padding(10)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
+    }
+
+    private var volumeBandsUnavailableRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(L("etf.volume.title")).font(.system(size: 10)).foregroundStyle(.secondary)
+            Text(L("etf.volume.unavailable"))
+                .font(.system(size: 10)).foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(10)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))

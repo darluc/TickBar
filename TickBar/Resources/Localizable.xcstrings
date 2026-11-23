@@ -5747,6 +5747,12 @@
         }
       }
     },
+    "etf.volume.unavailable": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Trade details unavailable; size bands need East Money or Tencent tick data. Retry in a minute or check the status line." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "成交明细未就绪，无法计算大/中/小单成交额。请稍候自动重试，或点暂停后再恢复刷新。" } }
+      }
+    },
     "etf.volume.title": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Basket turnover by record size" } },

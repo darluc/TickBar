@@ -1,14 +1,16 @@
 import Foundation
 
-/// East Money trade details for basket ETFs (same endpoint as stock analysis).
+/// East Money trade details for basket ETFs, with Tencent fallback when push2 is throttled.
 struct ETFVolumeDetailsService: Sendable {
     let http: HTTPClient
     let gate: ETFRequestGate
+    private let tencent: TencentStockVolumeService
 
     init(http: HTTPClient = HTTPClient(defaultHeaders: ["Referer": "https://quote.eastmoney.com/"]),
          gate: ETFRequestGate = ETFRequestGate()) {
         self.http = http
         self.gate = gate
+        self.tencent = TencentStockVolumeService(http: http)
     }
 
     func detailRows(code: String, secid: String) async throws -> [String] {
@@ -22,10 +24,19 @@ struct ETFVolumeDetailsService: Sendable {
 
     /// Merges a new provider snapshot onto prior rows so a rolling window does not drop history.
     func details(code: String, secid: String, merging cachedRows: [String]) async throws -> (mergedRows: [String], trades: [StockVolumeTrade]) {
-        let incoming = try await detailRows(code: code, secid: secid)
-        let merged = StockVolumeService.mergeDetailRows(cachedRows, incoming)
-        let trades = try StockVolumeService.parseDetailRows(merged, code: code)
-        return (merged, trades)
+        do {
+            let incoming = try await detailRows(code: code, secid: secid)
+            let merged = StockVolumeService.mergeDetailRows(cachedRows, incoming)
+            let trades = try StockVolumeService.parseDetailRows(merged, code: code)
+            guard !trades.isEmpty else { throw StockVolumeError.noTrades }
+            return (merged, trades)
+        } catch {
+            try Task.checkCancellation()
+            guard let symbol = SymbolEncoder.tencent(SymbolID(code: code, market: .a)) else { throw error }
+            let snapshot = try await tencent.fetchDetails(symbol: symbol)
+            guard !snapshot.trades.isEmpty else { throw StockVolumeError.noTrades }
+            return ([], snapshot.trades)
+        }
     }
 
     private func fetch(secid: String) async throws -> Data {

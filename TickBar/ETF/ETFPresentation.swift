@@ -184,7 +184,7 @@ actor ETFWorker: ETFRefreshing {
         self.fallback = fallback
         self.historyFallback = historyFallback
         self.baselineCache = baselineCache
-        self.volumeDetails = volumeDetails ?? ETFVolumeDetailsService(gate: service.gate)
+        self.volumeDetails = volumeDetails ?? ETFVolumeDetailsService(gate: ETFRequestGate(spacing: 0.3))
     }
 
     func refresh() async -> ETFOutcome {
@@ -294,7 +294,7 @@ actor ETFWorker: ETFRefreshing {
             }
             let toFetch: [ETFDescriptor]
             if initialPass {
-                toFetch = candidates
+                toFetch = Array(candidates.prefix(10))
             } else {
                 let behind = candidates.filter { detailRows[$0.code] != nil }
                 let neverLoaded = candidates.filter { detailRows[$0.code] == nil }
@@ -315,11 +315,11 @@ actor ETFWorker: ETFRefreshing {
                 }
                 guard !Task.isCancelled else { return outcome }
                 for (code, rows, value, slot) in fetched {
-                    if let rows, let value, !value.isEmpty {
-                        detailRows[code] = rows
+                    if let value, !value.isEmpty {
+                        if let rows, !rows.isEmpty { detailRows[code] = rows }
                         trades[code] = value
                         if let slot { detailRefreshSlot[code] = slot }
-                    } else if detailRows[code] == nil {
+                    } else if detailRows[code] == nil, trades[code] == nil {
                         outcome.failedVolumeDetails += 1
                     }
                 }
