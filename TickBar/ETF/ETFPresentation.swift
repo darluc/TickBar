@@ -286,7 +286,6 @@ actor ETFWorker: ETFRefreshing {
                 detailRefreshSlot = [:]
                 tradesDay = displayDay
             }
-            let volumeDetails = volumeDetails
             let initialPass = ETFDescriptor.basket.contains { detailRows[$0.code] == nil }
             let candidates = ETFDescriptor.basket.filter { etf in
                 guard let series = nextMinutes[etf.code], series.day == displayDay, series.lastSlot >= 0 else { return false }
@@ -302,11 +301,14 @@ actor ETFWorker: ETFRefreshing {
                 toFetch = neverLoaded + Array(behind.prefix(Self.incrementalDetailBatch))
             }
             if !toFetch.isEmpty {
+                let detailSnapshot = detailRows
+                let minutesForDetails = nextMinutes
+                let volumeSvc = volumeDetails
                 let fetched = await concurrently(toFetch, limit: 3) { etf -> (String, [String]?, [StockVolumeTrade]?, Int?) in
-                    let slot = nextMinutes[etf.code]?.lastSlot
+                    let slot = minutesForDetails[etf.code]?.lastSlot
+                    let cachedRows = detailSnapshot[etf.code] ?? []
                     let snapshot = await etfAttempt(source: "East Money", operation: "details \(etf.code)") {
-                        try await volumeDetails.details(code: etf.code, secid: etf.secid,
-                                                      merging: detailRows[etf.code] ?? [])
+                        try await volumeSvc.details(code: etf.code, secid: etf.secid, merging: cachedRows)
                     }
                     guard let snapshot else { return (etf.code, nil, nil, slot) }
                     return (etf.code, snapshot.mergedRows, snapshot.trades, slot)
