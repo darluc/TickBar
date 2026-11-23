@@ -5747,6 +5747,30 @@
         }
       }
     },
+    "etf.volume.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Basket turnover by record size" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "篮子成交额分档" } }
+      }
+    },
+    "etf.volume.caption": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Classified %.0f%% of session turnover (completed minutes)" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已分类 %.0f%% 时段成交额（已完成分钟）" } }
+      }
+    },
+    "etf.volume.caption.gaps": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Classified %.0f%% · %d minutes with detail mismatch" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已分类 %.0f%% · %d 分钟明细未对齐" } }
+      }
+    },
+    "etf.error.volumeDetails": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Trade detail failed for %d ETFs" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%d 只成交明细获取失败" } }
+      }
+    },
     "etf.error.minutes": {
       "localizations": {
         "en": {

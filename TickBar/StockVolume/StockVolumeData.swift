@@ -227,10 +227,30 @@ struct StockVolumeService: StockVolumeFetching {
     }
 
     static func parseDetails(_ data: Data, code: String) throws -> [StockVolumeTrade] {
+        try parseDetailRows(extractDetailRows(data, code: code), code: code)
+    }
+
+    static func extractDetailRows(_ data: Data, code: String) throws -> [String] {
         guard let body = try JSONDecoder().decode(Envelope.self, from: data).data,
               body.code == code, let rows = body.details else { throw StockVolumeError.invalidResponse }
-        // Repeated rows in a snapshot must not inflate volume. This is a snapshot, never an
-        // append-only stream: each successful refresh replaces the previous classification.
+        return rows
+    }
+
+    static func mergeDetailRows(_ cached: [String], _ incoming: [String]) -> [String] {
+        var seen = Set<String>()
+        var merged: [String] = []
+        merged.reserveCapacity(cached.count + incoming.count)
+        for row in cached {
+            if seen.insert(row).inserted { merged.append(row) }
+        }
+        for row in incoming {
+            if seen.insert(row).inserted { merged.append(row) }
+        }
+        return merged
+    }
+
+    static func parseDetailRows(_ rows: [String], code: String) throws -> [StockVolumeTrade] {
+        // Repeated rows in a snapshot must not inflate volume.
         var seen = Set<String>()
         return rows.compactMap { row in
             guard seen.insert(row).inserted else { return nil }

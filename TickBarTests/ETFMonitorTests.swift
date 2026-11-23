@@ -247,6 +247,39 @@ final class ETFDataTests: XCTestCase {
         XCTAssertNotEqual(a, ETFDisplay.build(quotes: quotes(offset: 1), minutes: minutes, baseline: nil))
     }
 
+    func testMergeDetailRowsKeepsOrderAndDedupes() {
+        let a = ["09:30:01,1,1,0,2", "09:30:02,1,1,0,2"]
+        let b = ["09:30:02,1,1,0,2", "09:30:03,1,1,0,2"]
+        XCTAssertEqual(StockVolumeService.mergeDetailRows(a, b), [
+            "09:30:01,1,1,0,2", "09:30:02,1,1,0,2", "09:30:03,1,1,0,2"
+        ])
+    }
+
+    func testBasketVolumeBandsAggregateReconciledMinutes() {
+        let code = codes[0]
+        var minuteSeries = series(through: 1, amount: 1e6)
+        minuteSeries.amount[0] = 100_000
+        minuteSeries.amount[1] = 50_000
+        let minutes = Dictionary(uniqueKeysWithValues: codes.map { ($0, $0 == code ? minuteSeries : series(through: 1, amount: 0)) })
+        let trades: [String: [StockVolumeTrade]] = [
+            code: [
+                StockVolumeTrade(slot: 0, hands: 1, estimatedAmount: 60_000, side: 2),
+                StockVolumeTrade(slot: 0, hands: 1, estimatedAmount: 40_000, side: 2),
+                StockVolumeTrade(slot: 1, hands: 1, estimatedAmount: 10_000, side: 2),
+                StockVolumeTrade(slot: 1, hands: 1, estimatedAmount: 40_000, side: 2)
+            ]
+        ]
+        let bands = ETFBasketVolumeClassification.aggregate(minutes: minutes, trades: trades,
+                                                              day: "2026-11-06", throughSlot: 1)
+        XCTAssertEqual(bands.amounts[StockVolumeBand.large.rawValue], 0)
+        XCTAssertEqual(bands.amounts[StockVolumeBand.medium.rawValue], 60_000)
+        XCTAssertEqual(bands.amounts[StockVolumeBand.small.rawValue], 90_000)
+        XCTAssertEqual(bands.coveredTurnover, 150_000)
+        XCTAssertEqual(bands.referenceTurnover, 150_000)
+        var display = ETFDisplay.build(quotes: quotes(), minutes: minutes, baseline: nil, trades: trades)
+        XCTAssertEqual(display.volumeBands?.amounts, bands.amounts)
+    }
+
     // MARK: Rendering
 
     @MainActor

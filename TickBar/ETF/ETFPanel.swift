@@ -64,6 +64,9 @@ struct ETFContent: View {
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 cards
+                if let bands = display.volumeBands {
+                    volumeBandsRow(bands)
+                }
                 if display.quoteCount < ETFDescriptor.basket.count || display.minuteCount < ETFDescriptor.basket.count {
                     Text(String(format: L("etf.partial", comment: "数据不完整：行情 %d/20，分时 %d/20"),
                                 display.quoteCount, display.minuteCount))
@@ -137,6 +140,46 @@ struct ETFContent: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(10)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
+    }
+
+    private func volumeBandsRow(_ bands: ETFBasketVolumeClassification) -> some View {
+        let caption = bands.inconsistentMinutes > 0
+            ? String(format: L("etf.volume.caption.gaps"), bands.coverage * 100, bands.inconsistentMinutes)
+            : String(format: L("etf.volume.caption"), bands.coverage * 100)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(L("etf.volume.title")).font(.system(size: 10)).foregroundStyle(.secondary)
+                Spacer()
+                Text(caption).font(.system(size: 9)).foregroundStyle(.secondary)
+            }
+            HStack(spacing: 6) {
+                ForEach(StockVolumeBand.allCases, id: \.rawValue) { band in
+                    volumeBandTile(band: band, yuan: bands.amounts[band.rawValue])
+                }
+            }
+            Text(L("volume.method")).font(.system(size: 8)).foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading).padding(10)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
+    }
+
+    private func volumeBandTile(band: StockVolumeBand, yuan: Double) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 4) {
+                Circle().fill(Self.bandColor(band.rawValue)).frame(width: 6, height: 6)
+                Text(band.title).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Text(String(format: "%.2f", yuan / 1e8) + " " + L("etf.unit"))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private static func bandColor(_ index: Int) -> Color {
+        let c = [(42.0, 120.0, 214.0), (235.0, 104.0, 52.0), (27.0, 175.0, 122.0)][index]
+        return Color(red: c.0 / 255, green: c.1 / 255, blue: c.2 / 255)
     }
 
     // MARK: Cumulative

@@ -214,6 +214,9 @@ extension ETFOutcome {
         var list: [String] = []
         if quotesFailed { list.append(L("etf.error.quotes", comment: "行情获取失败，保留已有数据")) }
         if failedMinutes > 0 { list.append(String(format: L("etf.error.minutes", comment: "%d 只分时获取失败"), failedMinutes)) }
+        if failedVolumeDetails > 0 {
+            list.append(String(format: L("etf.error.volumeDetails"), failedVolumeDetails))
+        }
         return list
     }
 }

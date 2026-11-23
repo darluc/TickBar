@@ -33,12 +33,14 @@ struct ETFDisplay: Equatable, Sendable {
     /// Today's running turnover relative to the 20-day average / previous day at the same minute.
     var paceAverage: Double?
     var pacePrevious: Double?
+    /// Basket turnover by large / medium / small record size (yuan), from reconciled trade details.
+    var volumeBands: ETFBasketVolumeClassification?
 
     var isEmpty: Bool { day.isEmpty }
     var liveSlot: Int { bars.count - 1 }
 
     static func build(quotes: [ETFQuote], minutes: [String: ETFMinuteSeries],
-                      baseline: ETFBaseline?) -> ETFDisplay {
+                      baseline: ETFBaseline?, trades: [String: [StockVolumeTrade]] = [:]) -> ETFDisplay {
         var out = ETFDisplay()
         let basket = ETFDescriptor.names
         let live = quotes.filter { $0.code != ETFDescriptor.indexCode }.map { ETFTime.day($0.timestamp) }
@@ -78,6 +80,13 @@ struct ETFDisplay: Equatable, Sendable {
         }
         if let series = minutes[ETFDescriptor.indexCode], series.day == day, series.lastSlot >= 0 {
             out.index = Array(series.close[0...series.lastSlot])
+        }
+
+        if !trades.isEmpty, out.liveSlot >= 0 {
+            let through = out.liveSlot == ETFTime.lastSlot ? out.liveSlot : out.liveSlot - 1
+            let bands = ETFBasketVolumeClassification.aggregate(minutes: minutes, trades: trades,
+                                                                  day: day, throughSlot: through)
+            if bands.hasData { out.volumeBands = bands }
         }
 
         out.applyBaseline(baseline)
@@ -154,6 +163,11 @@ actor ETFWorker: ETFRefreshing {
     private let fallback: TencentETFService
     private let historyFallback: SinaETFHistoryService
     private let baselineCache: ETFBaselineCache
+    private let volumeDetails: ETFVolumeDetailsService
+    private var trades: [String: [StockVolumeTrade]] = [:]
+    private var detailRows: [String: [String]] = [:]
+    private var detailRefreshSlot: [String: Int] = [:]
+    private var tradesDay = ""
     private var quotes: [ETFQuote] = []
     private var minutes: [String: ETFMinuteSeries] = [:]
     private var bars: [String: [String: [Double?]]] = [:]
@@ -164,11 +178,13 @@ actor ETFWorker: ETFRefreshing {
 
     init(service: ETFService = ETFService(), fallback: TencentETFService = TencentETFService(),
          historyFallback: SinaETFHistoryService = SinaETFHistoryService(),
-         baselineCache: ETFBaselineCache = ETFBaselineCache()) {
+         baselineCache: ETFBaselineCache = ETFBaselineCache(),
+         volumeDetails: ETFVolumeDetailsService? = nil) {
         self.service = service
         self.fallback = fallback
         self.historyFallback = historyFallback
         self.baselineCache = baselineCache
+        self.volumeDetails = volumeDetails ?? ETFVolumeDetailsService(gate: service.gate)
     }
 
     func refresh() async -> ETFOutcome {
@@ -261,12 +277,63 @@ actor ETFWorker: ETFRefreshing {
         guard !Task.isCancelled else { return outcome }
         quotes = Self.mergeQuotes(cachedQuotes, usable + replacement)
         minutes = nextMinutes
-        let display = ETFDisplay.build(quotes: quotes, minutes: minutes, baseline: baseline)
+
+        let displayDay = ETFDescriptor.basket.compactMap { nextMinutes[$0.code]?.day }.max()
+        if let displayDay {
+            if tradesDay != displayDay {
+                trades = [:]
+                detailRows = [:]
+                detailRefreshSlot = [:]
+                tradesDay = displayDay
+            }
+            let volumeDetails = volumeDetails
+            let initialPass = ETFDescriptor.basket.contains { detailRows[$0.code] == nil }
+            let candidates = ETFDescriptor.basket.filter { etf in
+                guard let series = nextMinutes[etf.code], series.day == displayDay, series.lastSlot >= 0 else { return false }
+                if detailRows[etf.code] == nil { return true }
+                return series.lastSlot > (detailRefreshSlot[etf.code] ?? -1)
+            }
+            let toFetch: [ETFDescriptor]
+            if initialPass {
+                toFetch = candidates
+            } else {
+                let behind = candidates.filter { detailRows[$0.code] != nil }
+                let neverLoaded = candidates.filter { detailRows[$0.code] == nil }
+                toFetch = neverLoaded + Array(behind.prefix(Self.incrementalDetailBatch))
+            }
+            if !toFetch.isEmpty {
+                let fetched = await concurrently(toFetch, limit: 3) { etf -> (String, String?, [StockVolumeTrade]?, Int?) in
+                    let slot = nextMinutes[etf.code]?.lastSlot
+                    let snapshot = await etfAttempt(source: "East Money", operation: "details \(etf.code)") {
+                        try await volumeDetails.details(code: etf.code, secid: etf.secid,
+                                                      merging: detailRows[etf.code] ?? [])
+                    }
+                    guard let snapshot else { return (etf.code, nil, nil, slot) }
+                    return (etf.code, snapshot.mergedRows, snapshot.trades, slot)
+                }
+                guard !Task.isCancelled else { return outcome }
+                for (code, rows, value, slot) in fetched {
+                    if let rows, let value, !value.isEmpty {
+                        detailRows[code] = rows
+                        trades[code] = value
+                        if let slot { detailRefreshSlot[code] = slot }
+                    } else if detailRows[code] == nil {
+                        outcome.failedVolumeDetails += 1
+                    }
+                }
+            }
+        }
+
+        let display = ETFDisplay.build(quotes: quotes, minutes: minutes, baseline: baseline,
+                                       trades: tradesDay == displayDay ? trades : [:])
         outcome.baselineMissing = !display.isEmpty && display.previous == nil
         outcome.display = display
         outcome.rateLimited = await service.gate.isCoolingDown()
         return outcome
     }
+
+    /// After the first full basket load, at most this many ETFs refresh trade details per minute tick.
+    private static let incrementalDetailBatch = 6
 
     private static func quoteSlot(_ date: Date) -> Int? {
         var calendar = Calendar(identifier: .gregorian)
@@ -360,6 +427,7 @@ struct ETFOutcome: Sendable {
     var baselineMissing = false
     var fallbackQuotes = false
     var fallbackMinutes = 0
+    var failedVolumeDetails = 0
     /// The realtime gate is cooling down after throttling or repeated transport failures;
     /// automatic polling should back off.
     var rateLimited = false
