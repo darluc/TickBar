@@ -118,6 +118,8 @@ private struct GeneralPaneContent: View {
                     .foregroundColor(.secondary)
             }
 
+            MCPSettingsSection(container: container)
+
             Section(header: Text(L("settings.privacySection", comment: "")).font(.headline)) {
                 Toggle(L("settings.hideOnScreenShare", comment: ""), isOn: $hideOnScreenShare)
                     .onChange(of: hideOnScreenShare) { value in

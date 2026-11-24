@@ -11,6 +11,9 @@ struct ETFDisplay: Equatable, Sendable {
         let shareText: String
         let changeText: String
         let change: Double
+        let amountYuan: Double
+        let shareOfBasket: Double?
+        let changePercent: Double?
         /// Bar length relative to the largest row.
         let fraction: Double
         var id: String { code }
@@ -59,7 +62,11 @@ struct ETFDisplay: Equatable, Sendable {
                 amountText: String(format: "%.2f", q.amount / 1e8),
                 shareText: out.total > 0 ? String(format: "%.1f%%", q.amount / out.total * 100) : "—",
                 changeText: q.changePercent.map { String(format: "%+.2f%%", $0) } ?? "—",
-                change: q.changePercent ?? 0, fraction: q.amount / largest)
+                change: q.changePercent ?? 0,
+                amountYuan: q.amount,
+                shareOfBasket: out.total > 0 ? q.amount / out.total : nil,
+                changePercent: q.changePercent,
+                fraction: q.amount / largest)
         }
 
         let covered = ETFDescriptor.basket.map(\.code).compactMap { code in

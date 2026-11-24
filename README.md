@@ -34,6 +34,7 @@ TickBar 最初名为 **PanBar**,开源项目 [PanBar](https://github.com/TNT-Lik
 
 ## 功能
 
+- **本机 MCP（可选）** — 为 AI Agent 提供只读股票与 ETF 篮子监控接口，默认关闭；见 [docs/MCP.md](docs/MCP.md)
 - **菜单栏滚动 ticker** — 自定义勾选要滚动的股票 + 三大汇总指标(今日盈亏 / 总资产 / 累计)
 - **多市场覆盖** — A / 港 / 美一站式,**自动按本位币(¥ / $ / HK$)汇总**
 - **多自选列表** — 分组管理(新建 / 重命名 / 删除 / 排序),跨组用 **Option+拖拽** 移动,组内拖拽即排序;支持 **Cmd+1 ~ Cmd+9** 快速切换
@@ -83,8 +84,21 @@ TickBar 完全免费开源,**无广告无付费功能**。如果觉得有用,请
 
 感谢支持开源!❤️
 
+## 本机 MCP 与 Agent Skill
+
+TickBar 可在**本机**为 AI Agent（如 Claude Code、Cursor 等）提供只读行情接口，**默认关闭**，需在 **设置 → 通用 → 本机 MCP** 中开启。完整说明见 [docs/MCP.md](docs/MCP.md)。
+
+| 项目 | 说明 |
+| --- | --- |
+| 地址 | `http://127.0.0.1:18766/mcp`（仅回环，需 Bearer 令牌） |
+| `get_stock_quotes` | 按市场（`a` / `hk` / `us` / `kr`）与代码列表查询股票行情 |
+| `get_etf_snapshot` | 20 只 ETF 篮子：成交额总量与分时累计、较前一交易日 / 近 N 日均值对比、大中小单成交分类、分 ETF 排名 |
+
+**Agent Skill（可选）**：仓库内 [`skills/tickbar-market-data/SKILL.md`](skills/tickbar-market-data/SKILL.md) 说明如何选工具、理解字段含义（元 vs 亿元、pace 比例、分档口径等）。将 skill 安装到你的 Agent 配置中可帮助模型稳定调用；不安装也可直接对接 MCP。
+
 ## 开发文档
 
+- [本机 MCP](docs/MCP.md)：启用方式、工具列表、认证与限流说明。
 - [ETF 面板实现说明](docs/ETF-PANEL.md)：数据接口、刷新规则、统计口径、性能设计及已移除的功能。
 - [个股分析](docs/STOCK-VOLUME.md)：自选股右键入口、分类口径、逐分钟对账、公开持仓、刷新规则及接口验证结果。
 - [限流与退避](docs/RATE-LIMITING.md)：各数据源的请求节奏、门控、429 处理、备用源与缓存策略。

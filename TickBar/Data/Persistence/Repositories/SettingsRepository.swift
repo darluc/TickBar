@@ -86,6 +86,7 @@ struct SettingsRepository {
         static let proxyMode = "proxy_mode"            // off / system / manual
         static let proxyHost = "proxy_host"
         static let proxyPort = "proxy_port"
+        static let mcpEnabled = "mcp_enabled"
 
         /// 拼出市场对应的 override key,避免外部各自拼字符串
         static func marketOverride(_ market: Market) -> String {
@@ -97,6 +98,14 @@ struct SettingsRepository {
             case .crypto: return marketOverrideCrypto
             }
         }
+    }
+
+    var mcpEnabled: Bool {
+        string(Keys.mcpEnabled) == "1"
+    }
+
+    func setMCPEnabled(_ enabled: Bool) throws {
+        try set(Keys.mcpEnabled, enabled ? "1" : "0")
     }
 
     /// FX 自动刷新间隔(秒)。0 = 关闭自动刷新。

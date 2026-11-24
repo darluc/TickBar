@@ -46,6 +46,7 @@ final class ETFMonitor: ObservableObject {
     private var fallbackStatus = ""
     /// Grows while the provider keeps rate limiting, so the panel stops retrying every minute.
     private var backoff: TimeInterval = 0
+    private var lastMCPRefreshAttempt: Date?
 
     init(worker: ETFRefreshing = ETFWorker(), clock: MarketClock = MarketClock(),
          interval: TimeInterval = 60, marketStatus: (() -> MarketStatus)? = nil) {
@@ -203,6 +204,38 @@ final class ETFMonitor: ObservableObject {
         }
         if !fallbackStatus.isEmpty { next.text += " · " + fallbackStatus }
         if next != status { status = next }
+    }
+
+    // MARK: - MCP
+
+    var mcpPanelVisible: Bool { selectedPage && !surfaces.isEmpty }
+
+    var mcpLastSuccessfulRefresh: Date? { lastSuccess }
+
+    func mcpMarketStatus() -> String {
+        switch marketStatus() {
+        case .open: return "open"
+        case .lunchBreak: return "lunchBreak"
+        case .closed: return "closed"
+        }
+    }
+
+    /// Refresh on demand for MCP when the panel is hidden but a client needs a first snapshot.
+    func prepareForMCPSnapshot() async {
+        if paused || refreshing { return }
+        if mcpPanelVisible { return }
+        let needsData = board.display.isEmpty
+        let stale = lastSuccess.map { Date().timeIntervalSince($0) > pollDelay } ?? true
+        let duringSession = marketStatus() == .open
+        guard needsData || (duringSession && stale) else { return }
+        guard canAttemptMCPRefresh() else { return }
+        lastMCPRefreshAttempt = Date()
+        await refresh()
+    }
+
+    private func canAttemptMCPRefresh() -> Bool {
+        guard let last = lastMCPRefreshAttempt else { return true }
+        return Date().timeIntervalSince(last) >= pollDelay
     }
 }
 

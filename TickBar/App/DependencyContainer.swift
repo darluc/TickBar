@@ -21,6 +21,7 @@ final class DependencyContainer {
     let dataSourcePrefs: DataSourcePreferences
     let appearancePrefs: AppearancePreferences
     let etfMonitor: ETFMonitor
+    let mcpService: TickBarMCPService
 
     init() throws {
         let dbPath = try Database.defaultPath()
@@ -75,6 +76,7 @@ final class DependencyContainer {
         self.networkMonitor = NetworkMonitor()
         self.tickerPrefs = TickerPreferences(repo: settingsRepo)
         self.appearancePrefs = AppearancePreferences(repo: settingsRepo)
+        self.mcpService = TickBarMCPService()
 
         self.tickerPrefs.$pauseWhenClosed
             .sink { [weak refresher] val in
@@ -87,6 +89,7 @@ final class DependencyContainer {
 
     static func bootstrap() throws -> DependencyContainer {
         let container = try DependencyContainer()
+        container.mcpService.attach(container)
         shared = container
         return container
     }

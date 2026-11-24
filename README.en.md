@@ -34,6 +34,7 @@ TickBar was originally named **PanBar**, and the open-source project [PanBar](ht
 
 ## Features
 
+- **Local MCP (optional)** — read-only stock quotes and 20-ETF basket monitor for on-machine AI agents; off by default. See [docs/MCP.md](docs/MCP.md)
 - **Scrolling menu bar ticker** — pick which tickers to scroll, plus three summary metrics (today's P&L / total assets / lifetime P&L)
 - **Multi-market** — A-share / HK / US in one place, **auto-aggregated by base currency (¥ / $ / HK$)**
 - **Multiple watchlists** — group management (create / rename / delete / reorder), cross-group move via **Option+drag**, drag within group to sort; quick switch via **Cmd+1 ~ Cmd+9**
@@ -84,6 +85,25 @@ If this project helps you, consider buying me a coffee!
 > Double-check the network before sending.
 
 Thank you for supporting open source! ❤️
+
+## Local MCP & Agent Skill
+
+TickBar can expose **read-only** market data to on-machine AI agents (e.g. Claude Code, Cursor) over loopback HTTP. The server is **off by default** — enable it under **Settings → General → Local MCP**. Details: [docs/MCP.md](docs/MCP.md).
+
+| Item | Description |
+| --- | --- |
+| Endpoint | `http://127.0.0.1:18766/mcp` (loopback only, Bearer token required) |
+| `get_stock_quotes` | Quotes by market (`a` / `hk` / `us` / `kr`) and symbol list |
+| `get_etf_snapshot` | Fixed 20-ETF basket: turnover totals, intraday cumulative, pace vs previous session and multi-day average, large/medium/small trade-size bands, per-ETF ranking |
+
+**Agent Skill (optional):** [`skills/tickbar-market-data/SKILL.md`](skills/tickbar-market-data/SKILL.md) documents tool choice and field semantics (yuan vs UI 亿元 labels, pace ratios, band definitions). Install the skill in your agent setup for more reliable tool use; the MCP endpoint works without it.
+
+## Docs
+
+- [Local MCP](docs/MCP.md) — enable, tools, auth, rate behavior.
+- [ETF panel](docs/ETF-PANEL.md) — data sources, refresh rules, metrics, performance.
+- [Stock volume analysis](docs/STOCK-VOLUME.md) — context menu entry, classification, reconciliation, disclosed holdings.
+- [Rate limiting](docs/RATE-LIMITING.md) — request pacing, gates, 429 handling, fallbacks, caches.
 
 ## License
 

@@ -105,6 +105,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 await container.warmup()
             }
 
+            container.mcpService.reconcile(enabled: container.settingsRepo.mcpEnabled)
+
             // 首启 onboarding
             if !OnboardingWindowController.isOnboarded(repo: container.settingsRepo) {
                 OnboardingWindowController.shared.show(container: container) {
@@ -120,5 +122,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         SettingsWindowController.shared.show()
         return true
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        container?.mcpService.stop()
     }
 }

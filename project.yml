@@ -22,6 +22,9 @@ packages:
   GRDB:
     url: https://github.com/groue/GRDB.swift
     from: "6.29.0"
+  swift-nio:
+    url: https://github.com/apple/swift-nio
+    from: "2.65.0"
 
 targets:
   TickBar:
@@ -67,6 +70,10 @@ targets:
           CODE_SIGN_ENTITLEMENTS: TickBar/Resources/TickBar.entitlements
     dependencies:
       - package: GRDB
+      - package: swift-nio
+        product: NIOPosix
+      - package: swift-nio
+        product: NIOHTTP1
 
   TickBarTests:
     type: bundle.unit-test

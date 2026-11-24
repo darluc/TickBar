@@ -1,85 +1,1270 @@
 {
   "sourceLanguage": "zh-Hans",
   "strings": {
-    "etf.status.fallback": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "腾讯备用 · 分时 %d 只" } }, "en": { "stringUnit": { "state": "translated", "value": "Tencent fallback · %d minute series" } } } },
-    "etf.error.rollover": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "新交易日数据不完整，保留上一交易日" } }, "en": { "stringUnit": { "state": "translated", "value": "New session data incomplete; showing previous session" } } } },
-    "holdings.tab.market": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "ETF 成交" } }, "en": { "stringUnit": { "state": "translated", "value": "ETF trading" } } } },
-    "holdings.tab.observe": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "持仓观察" } }, "en": { "stringUnit": { "state": "translated", "value": "Holdings" } } } },
-    "holdings.updated": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "最近更新：%@" } }, "en": { "stringUnit": { "state": "translated", "value": "Last updated: %@" } } } },
-    "holdings.etfs": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "20 ETF · 份额快照" } }, "en": { "stringUnit": { "state": "translated", "value": "20 ETFs · share snapshots" } } } },
-    "holdings.etfHint": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "打开本面板或手动刷新时采集；日期为本机采集日期，数据源未标注份额生效日。差值不等于当日净申赎。" } }, "en": { "stringUnit": { "state": "translated", "value": "Collected when this panel opens or is refreshed. Dates are local collection dates, not the share effective date. Differences are not daily net creations." } } } },
-    "holdings.etfError": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "ETF 份额更新不完整，可能显示旧快照" } }, "en": { "stringUnit": { "state": "translated", "value": "ETF share update incomplete; older snapshots may be shown" } } } },
-    "holdings.etfShares": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "%.2f 亿份" } }, "en": { "stringUnit": { "state": "translated", "value": "%.2f × 100M shares" } } } },
-    "holdings.etfDifference": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "较 %@：%+.2f 亿份" } }, "en": { "stringUnit": { "state": "translated", "value": "vs %@: %+.2f × 100M shares" } } } },
-    "holdings.etfOwnersUnavailable": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "ETF 具名持有人数据暂不可用。" } }, "en": { "stringUnit": { "state": "translated", "value": "Named ETF holder data is not available." } } } },
-    "holdings.disclosed": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "公开持仓" } }, "en": { "stringUnit": { "state": "translated", "value": "Disclosed holdings" } } } },
-    "holdings.scope": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "前十大流通股东，最多查询最近 200 条股东记录；未出现不代表没有持仓。" } }, "en": { "stringUnit": { "state": "translated", "value": "Top ten floating shareholders, up to 200 recent shareholder records. Absence does not mean no holding." } } } },
-    "holdings.changeSince": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "较 %@ 披露：%+.2f 万股" } }, "en": { "stringUnit": { "state": "translated", "value": "vs disclosure %@: %+.2f × 10k shares" } } } },
-    "holdings.historyChart": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "最近披露持股数 · 万股" } }, "en": { "stringUnit": { "state": "translated", "value": "Recent disclosed shares · 10k" } } } },
-    "holdings.changeUnavailable": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "缺少可比较的历史持股数" } }, "en": { "stringUnit": { "state": "translated", "value": "No comparable historical share count" } } } },
-    "holdings.profitUnavailable": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "账面盈亏暂无法估算：公开持仓未提供机构买入成本。" } }, "en": { "stringUnit": { "state": "translated", "value": "Unrealized P&L unavailable: disclosures do not provide the institution's purchase cost." } } } },
-    "holdings.latest": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "最新报告期" } }, "en": { "stringUnit": { "state": "translated", "value": "Latest period" } } } },
-    "holdings.none": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "所查询报告期内未见匹配记录" } }, "en": { "stringUnit": { "state": "translated", "value": "No matching records in retrieved periods" } } } },
-    "holdings.shares": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "%.2f 万股" } }, "en": { "stringUnit": { "state": "translated", "value": "%.2f × 10k shares" } } } },
-    "holdings.percent": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "占流通股 %.2f%%" } }, "en": { "stringUnit": { "state": "translated", "value": "%.2f%% of float" } } } },
-    "holdings.title": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "ETF 份额观察" } }, "en": { "stringUnit": { "state": "translated", "value": "ETF share observation" } } } },
-    "holdings.refresh": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "刷新" } }, "en": { "stringUnit": { "state": "translated", "value": "Refresh" } } } },
-    "holdings.disclaimer": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "持仓以公开披露为准，存在滞后；ETF 份额变化和大单成交无法识别投资者。" } }, "en": { "stringUnit": { "state": "translated", "value": "Holdings are disclosed with a delay. ETF share changes and large trades do not identify investors." } } } },
-    "volume.source.eastMoney": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "东方财富" } }, "en": { "stringUnit": { "state": "translated", "value": "East Money" } } } },
-    "volume.source.tencent": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "腾讯" } }, "en": { "stringUnit": { "state": "translated", "value": "Tencent" } } } },
-    "volume.sources": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "明细：%@ · 分时：%@" } }, "en": { "stringUnit": { "state": "translated", "value": "Trades: %@ · Minutes: %@" } } } },
-    "volume.dateMismatch": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "成交明细与分时的交易日期不一致，未合并数据，请稍后刷新" } }, "en": { "stringUnit": { "state": "translated", "value": "Trade and minute dates differ. Data was not combined; please refresh later." } } } },
-    "volume.netChart": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "净买 / 净卖" } }, "en": { "stringUnit": { "state": "translated", "value": "Net buy / sell" } } } },
-    "volume.netBuy": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "净买（上方）" } }, "en": { "stringUnit": { "state": "translated", "value": "Net buy (above)" } } } },
-    "volume.netSell": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "净卖（下方）" } }, "en": { "stringUnit": { "state": "translated", "value": "Net sell (below)" } } } },
-    "volume.netMissing": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "净额缺失" } }, "en": { "stringUnit": { "state": "translated", "value": "Net unavailable" } } } },
-    "volume.unitAmount": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "万元" } }, "en": { "stringUnit": { "state": "translated", "value": "CNY 10,000" } } } },
-    "volume.netHint": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "大、中、小额分别计算净额（主动买入估额 − 主动卖出估额，万元）；净买向上、净卖向下分别堆叠。中性成交不计入，缺失分钟以灰纹标记。" } }, "en": { "stringUnit": { "state": "translated", "value": "Net is buys − sells per large, medium and small category (CNY 10,000). Net buys stack above zero; net sells below. Neutral trades are excluded; gray hatching marks unavailable minutes." } } } },
-    "volume.netTable": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "分钟分类净额表（万元）" } }, "en": { "stringUnit": { "state": "translated", "value": "Minute net by category (CNY 10,000)" } } } },
-    "stockAnalysis.title": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "个股分析" } }, "en": { "stringUnit": { "state": "translated", "value": "Stock analysis" } } } },
-    "volume.band.0": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "大额明细" } }, "en": { "stringUnit": { "state": "translated", "value": "Large records" } } } },
-    "volume.band.1": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "中额明细" } }, "en": { "stringUnit": { "state": "translated", "value": "Medium records" } } } },
-    "volume.band.2": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "小额明细" } }, "en": { "stringUnit": { "state": "translated", "value": "Small records" } } } },
-    "volume.threshold.0": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "估算金额 ≥ 100 万元" } }, "en": { "stringUnit": { "state": "translated", "value": "Estimated ≥ CNY 1M" } } } },
-    "volume.threshold.1": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "10 万 ≤ 估额 < 100 万元" } }, "en": { "stringUnit": { "state": "translated", "value": "CNY 100K ≤ est. < 1M" } } } },
-    "volume.threshold.2": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "估算金额 < 10 万元" } }, "en": { "stringUnit": { "state": "translated", "value": "Estimated < CNY 100K" } } } },
-    "volume.unsupported": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "目前支持沪深 A 股个股" } }, "en": { "stringUnit": { "state": "translated", "value": "Available for Shanghai and Shenzhen A-share stocks" } } } },
-    "volume.invalidResponse": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "成交数据响应无效，请稍后重试" } }, "en": { "stringUnit": { "state": "translated", "value": "Invalid trade data response. Please retry later." } } } },
-    "volume.noTrades": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "暂无可对账的已完成分钟成交数据" } }, "en": { "stringUnit": { "state": "translated", "value": "No completed trade minutes available for reconciliation" } } } },
-    "volume.loading": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在获取并核对成交数据…" } }, "en": { "stringUnit": { "state": "translated", "value": "Loading and reconciling trade data…" } } } },
-    "volume.method": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "按单条公开明细金额分档：东方财富金额按价格 × 手数 × 100 股估算；腾讯采用接口成交额。明细可能合并多笔成交，买卖方向采用各源标记，不代表原始委托大小或投资者身份。明细量与分时量在容差内视为精确；明细量少于分时量时只展示已观测记录并保留未知余量；无法单独对账但相邻 3 分钟整体对账时按邻近构成估算。三种状态分别标注精确、部分、估算；无法验证的分钟保持未分类，不填造历史。金额单位为万元人民币。" } }, "en": { "stringUnit": { "state": "translated", "value": "Records are grouped by amount: East Money estimates price × lots × 100 shares; Tencent supplies turnover. Records may combine executions and each source assigns direction differently; neither identifies original orders or investors. Detail and minute volume within tolerance is treated as exact; an under-count shows only observed records with an explicit unknown remainder; when a 3-minute window reconciles, its composition is used to estimate. Minutes are labelled exact, partial or estimated; unverifiable minutes stay unclassified. No synthetic history. Amounts are in CNY 10,000." } } } },
-    "volume.resume": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "继续" } }, "en": { "stringUnit": { "state": "translated", "value": "Resume" } } } },
-    "volume.pause": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "暂停" } }, "en": { "stringUnit": { "state": "translated", "value": "Pause" } } } },
-    "volume.refresh": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "刷新" } }, "en": { "stringUnit": { "state": "translated", "value": "Refresh" } } } },
-    "volume.total": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "截至所示分钟的累计成交量" } }, "en": { "stringUnit": { "state": "translated", "value": "Volume through the displayed minute" } } } },
-    "volume.through": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "截至" } }, "en": { "stringUnit": { "state": "translated", "value": "Through" } } } },
-    "volume.coverage": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "分类覆盖率 %.1f%%" } }, "en": { "stringUnit": { "state": "translated", "value": "Classified volume %.1f%%" } } } },
-    "volume.gaps": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "部分分钟明细缺失或量不一致，已保留为未分类" } }, "en": { "stringUnit": { "state": "translated", "value": "Missing or inconsistent minutes are shown as unclassified" } } } },
-    "volume.quality": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "状态" } }, "en": { "stringUnit": { "state": "translated", "value": "Match" } } } },
-    "volume.quality.exact": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "精确" } }, "en": { "stringUnit": { "state": "translated", "value": "Exact" } } } },
-    "volume.quality.partial": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "部分" } }, "en": { "stringUnit": { "state": "translated", "value": "Partial" } } } },
-    "volume.quality.estimated": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "估算" } }, "en": { "stringUnit": { "state": "translated", "value": "Estimated" } } } },
-    "volume.quality.unknown": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "未分类" } }, "en": { "stringUnit": { "state": "translated", "value": "Unclassified" } } } },
-    "volume.qualityNote": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "其中 %d 分钟为部分分类，%d 分钟按邻近窗口估算" } }, "en": { "stringUnit": { "state": "translated", "value": "%d partial and %d window-estimated minutes" } } } },
-    "volume.chart": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "图表" } }, "en": { "stringUnit": { "state": "translated", "value": "Chart" } } } },
-    "volume.classified": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "分类成交量" } }, "en": { "stringUnit": { "state": "translated", "value": "Classified volume" } } } },
-    "volume.totalChart": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "总成交量" } }, "en": { "stringUnit": { "state": "translated", "value": "Total volume" } } } },
-    "volume.texture": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "图纹" } }, "en": { "stringUnit": { "state": "translated", "value": "Patterns" } } } },
-    "volume.unknown": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "未分类" } }, "en": { "stringUnit": { "state": "translated", "value": "Unclassified" } } } },
-    "volume.unitHands": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "成交量（手）" } }, "en": { "stringUnit": { "state": "translated", "value": "Volume (lots)" } } } },
-    "volume.hands": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "手" } }, "en": { "stringUnit": { "state": "translated", "value": "lots" } } } },
-    "volume.hover": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "悬停查看每分钟明细" } }, "en": { "stringUnit": { "state": "translated", "value": "Hover to inspect a minute" } } } },
-    "volume.summary": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "分类统计 · 金额为估算值，单位万元" } }, "en": { "stringUnit": { "state": "translated", "value": "Classification · estimated amounts in CNY 10,000" } } } },
-    "volume.band": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "明细量级" } }, "en": { "stringUnit": { "state": "translated", "value": "Record size" } } } },
-    "volume.buy": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "主动买入" } }, "en": { "stringUnit": { "state": "translated", "value": "Buy" } } } },
-    "volume.sell": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "主动卖出" } }, "en": { "stringUnit": { "state": "translated", "value": "Sell" } } } },
-    "volume.neutral": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "中性" } }, "en": { "stringUnit": { "state": "translated", "value": "Neutral" } } } },
-    "volume.net": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "买卖净额" } }, "en": { "stringUnit": { "state": "translated", "value": "Net" } } } },
-    "volume.minuteTable": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "分钟数据表（手）" } }, "en": { "stringUnit": { "state": "translated", "value": "Minute data table (lots)" } } } },
-    "volume.time": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "时间" } }, "en": { "stringUnit": { "state": "translated", "value": "Time" } } } },
-    "volume.keptPrevious": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "更新失败，保留上次数据。" } }, "en": { "stringUnit": { "state": "translated", "value": "Update failed; previous data retained." } } } },
-    "volume.paused": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "自动刷新已暂停，可手动刷新" } }, "en": { "stringUnit": { "state": "translated", "value": "Automatic updates paused; manual refresh is available" } } } },
-    "volume.source": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "可见且开市时每 60 秒刷新" } }, "en": { "stringUnit": { "state": "translated", "value": "Updates every 60s while visible and trading" } } } },
+    "etf.status.fallback": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "腾讯备用 · 分时 %d 只"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tencent fallback · %d minute series"
+          }
+        }
+      }
+    },
+    "etf.error.rollover": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新交易日数据不完整，保留上一交易日"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New session data incomplete; showing previous session"
+          }
+        }
+      }
+    },
+    "holdings.tab.market": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ETF 成交"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ETF trading"
+          }
+        }
+      }
+    },
+    "holdings.tab.observe": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "持仓观察"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Holdings"
+          }
+        }
+      }
+    },
+    "holdings.updated": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近更新：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last updated: %@"
+          }
+        }
+      }
+    },
+    "holdings.etfs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "20 ETF · 份额快照"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "20 ETFs · share snapshots"
+          }
+        }
+      }
+    },
+    "holdings.etfHint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开本面板或手动刷新时采集；日期为本机采集日期，数据源未标注份额生效日。差值不等于当日净申赎。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collected when this panel opens or is refreshed. Dates are local collection dates, not the share effective date. Differences are not daily net creations."
+          }
+        }
+      }
+    },
+    "holdings.etfError": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ETF 份额更新不完整，可能显示旧快照"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ETF share update incomplete; older snapshots may be shown"
+          }
+        }
+      }
+    },
+    "holdings.etfShares": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.2f 亿份"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.2f × 100M shares"
+          }
+        }
+      }
+    },
+    "holdings.etfDifference": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较 %@：%+.2f 亿份"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vs %@: %+.2f × 100M shares"
+          }
+        }
+      }
+    },
+    "holdings.etfOwnersUnavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ETF 具名持有人数据暂不可用。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Named ETF holder data is not available."
+          }
+        }
+      }
+    },
+    "holdings.disclosed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公开持仓"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disclosed holdings"
+          }
+        }
+      }
+    },
+    "holdings.scope": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前十大流通股东，最多查询最近 200 条股东记录；未出现不代表没有持仓。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Top ten floating shareholders, up to 200 recent shareholder records. Absence does not mean no holding."
+          }
+        }
+      }
+    },
+    "holdings.changeSince": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较 %@ 披露：%+.2f 万股"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vs disclosure %@: %+.2f × 10k shares"
+          }
+        }
+      }
+    },
+    "holdings.historyChart": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近披露持股数 · 万股"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent disclosed shares · 10k"
+          }
+        }
+      }
+    },
+    "holdings.changeUnavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "缺少可比较的历史持股数"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No comparable historical share count"
+          }
+        }
+      }
+    },
+    "holdings.profitUnavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "账面盈亏暂无法估算：公开持仓未提供机构买入成本。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unrealized P&L unavailable: disclosures do not provide the institution's purchase cost."
+          }
+        }
+      }
+    },
+    "holdings.latest": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最新报告期"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Latest period"
+          }
+        }
+      }
+    },
+    "holdings.none": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所查询报告期内未见匹配记录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No matching records in retrieved periods"
+          }
+        }
+      }
+    },
+    "holdings.shares": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.2f 万股"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.2f × 10k shares"
+          }
+        }
+      }
+    },
+    "holdings.percent": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "占流通股 %.2f%%"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.2f%% of float"
+          }
+        }
+      }
+    },
+    "holdings.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ETF 份额观察"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ETF share observation"
+          }
+        }
+      }
+    },
+    "holdings.refresh": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh"
+          }
+        }
+      }
+    },
+    "holdings.disclaimer": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "持仓以公开披露为准，存在滞后；ETF 份额变化和大单成交无法识别投资者。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Holdings are disclosed with a delay. ETF share changes and large trades do not identify investors."
+          }
+        }
+      }
+    },
+    "volume.source.eastMoney": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "东方财富"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "East Money"
+          }
+        }
+      }
+    },
+    "volume.source.tencent": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "腾讯"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tencent"
+          }
+        }
+      }
+    },
+    "volume.sources": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "明细：%@ · 分时：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trades: %@ · Minutes: %@"
+          }
+        }
+      }
+    },
+    "volume.dateMismatch": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成交明细与分时的交易日期不一致，未合并数据，请稍后刷新"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trade and minute dates differ. Data was not combined; please refresh later."
+          }
+        }
+      }
+    },
+    "volume.netChart": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "净买 / 净卖"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Net buy / sell"
+          }
+        }
+      }
+    },
+    "volume.netBuy": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "净买（上方）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Net buy (above)"
+          }
+        }
+      }
+    },
+    "volume.netSell": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "净卖（下方）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Net sell (below)"
+          }
+        }
+      }
+    },
+    "volume.netMissing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "净额缺失"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Net unavailable"
+          }
+        }
+      }
+    },
+    "volume.unitAmount": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "万元"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CNY 10,000"
+          }
+        }
+      }
+    },
+    "volume.netHint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大、中、小额分别计算净额（主动买入估额 − 主动卖出估额，万元）；净买向上、净卖向下分别堆叠。中性成交不计入，缺失分钟以灰纹标记。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Net is buys − sells per large, medium and small category (CNY 10,000). Net buys stack above zero; net sells below. Neutral trades are excluded; gray hatching marks unavailable minutes."
+          }
+        }
+      }
+    },
+    "volume.netTable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分钟分类净额表（万元）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minute net by category (CNY 10,000)"
+          }
+        }
+      }
+    },
+    "stockAnalysis.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "个股分析"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stock analysis"
+          }
+        }
+      }
+    },
+    "volume.band.0": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大额明细"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Large records"
+          }
+        }
+      }
+    },
+    "volume.band.1": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中额明细"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medium records"
+          }
+        }
+      }
+    },
+    "volume.band.2": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小额明细"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Small records"
+          }
+        }
+      }
+    },
+    "volume.threshold.0": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "估算金额 ≥ 100 万元"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimated ≥ CNY 1M"
+          }
+        }
+      }
+    },
+    "volume.threshold.1": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 万 ≤ 估额 < 100 万元"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CNY 100K ≤ est. < 1M"
+          }
+        }
+      }
+    },
+    "volume.threshold.2": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "估算金额 < 10 万元"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimated < CNY 100K"
+          }
+        }
+      }
+    },
+    "volume.unsupported": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前支持沪深 A 股个股"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Available for Shanghai and Shenzhen A-share stocks"
+          }
+        }
+      }
+    },
+    "volume.invalidResponse": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成交数据响应无效，请稍后重试"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid trade data response. Please retry later."
+          }
+        }
+      }
+    },
+    "volume.noTrades": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无可对账的已完成分钟成交数据"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No completed trade minutes available for reconciliation"
+          }
+        }
+      }
+    },
+    "volume.loading": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在获取并核对成交数据…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading and reconciling trade data…"
+          }
+        }
+      }
+    },
+    "volume.method": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按单条公开明细金额分档：东方财富金额按价格 × 手数 × 100 股估算；腾讯采用接口成交额。明细可能合并多笔成交，买卖方向采用各源标记，不代表原始委托大小或投资者身份。明细量与分时量在容差内视为精确；明细量少于分时量时只展示已观测记录并保留未知余量；无法单独对账但相邻 3 分钟整体对账时按邻近构成估算。三种状态分别标注精确、部分、估算；无法验证的分钟保持未分类，不填造历史。金额单位为万元人民币。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Records are grouped by amount: East Money estimates price × lots × 100 shares; Tencent supplies turnover. Records may combine executions and each source assigns direction differently; neither identifies original orders or investors. Detail and minute volume within tolerance is treated as exact; an under-count shows only observed records with an explicit unknown remainder; when a 3-minute window reconciles, its composition is used to estimate. Minutes are labelled exact, partial or estimated; unverifiable minutes stay unclassified. No synthetic history. Amounts are in CNY 10,000."
+          }
+        }
+      }
+    },
+    "volume.resume": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "继续"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resume"
+          }
+        }
+      }
+    },
+    "volume.pause": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂停"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
+        }
+      }
+    },
+    "volume.refresh": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh"
+          }
+        }
+      }
+    },
+    "volume.total": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截至所示分钟的累计成交量"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume through the displayed minute"
+          }
+        }
+      }
+    },
+    "volume.through": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截至"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Through"
+          }
+        }
+      }
+    },
+    "volume.coverage": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分类覆盖率 %.1f%%"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Classified volume %.1f%%"
+          }
+        }
+      }
+    },
+    "volume.gaps": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分分钟明细缺失或量不一致，已保留为未分类"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Missing or inconsistent minutes are shown as unclassified"
+          }
+        }
+      }
+    },
+    "volume.quality": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "状态"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Match"
+          }
+        }
+      }
+    },
+    "volume.quality.exact": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "精确"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exact"
+          }
+        }
+      }
+    },
+    "volume.quality.partial": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partial"
+          }
+        }
+      }
+    },
+    "volume.quality.estimated": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "估算"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimated"
+          }
+        }
+      }
+    },
+    "volume.quality.unknown": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未分类"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unclassified"
+          }
+        }
+      }
+    },
+    "volume.qualityNote": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其中 %d 分钟为部分分类，%d 分钟按邻近窗口估算"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d partial and %d window-estimated minutes"
+          }
+        }
+      }
+    },
+    "volume.chart": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "图表"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chart"
+          }
+        }
+      }
+    },
+    "volume.classified": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分类成交量"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Classified volume"
+          }
+        }
+      }
+    },
+    "volume.totalChart": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "总成交量"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total volume"
+          }
+        }
+      }
+    },
+    "volume.texture": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "图纹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Patterns"
+          }
+        }
+      }
+    },
+    "volume.unknown": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未分类"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unclassified"
+          }
+        }
+      }
+    },
+    "volume.unitHands": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成交量（手）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume (lots)"
+          }
+        }
+      }
+    },
+    "volume.hands": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lots"
+          }
+        }
+      }
+    },
+    "volume.hover": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "悬停查看每分钟明细"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hover to inspect a minute"
+          }
+        }
+      }
+    },
+    "volume.summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分类统计 · 金额为估算值，单位万元"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Classification · estimated amounts in CNY 10,000"
+          }
+        }
+      }
+    },
+    "volume.band": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "明细量级"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Record size"
+          }
+        }
+      }
+    },
+    "volume.buy": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主动买入"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buy"
+          }
+        }
+      }
+    },
+    "volume.sell": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主动卖出"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sell"
+          }
+        }
+      }
+    },
+    "volume.neutral": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中性"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neutral"
+          }
+        }
+      }
+    },
+    "volume.net": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "买卖净额"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Net"
+          }
+        }
+      }
+    },
+    "volume.minuteTable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分钟数据表（手）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minute data table (lots)"
+          }
+        }
+      }
+    },
+    "volume.time": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时间"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time"
+          }
+        }
+      }
+    },
+    "volume.keptPrevious": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新失败，保留上次数据。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update failed; previous data retained."
+          }
+        }
+      }
+    },
+    "volume.paused": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动刷新已暂停，可手动刷新"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic updates paused; manual refresh is available"
+          }
+        }
+      }
+    },
+    "volume.source": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可见且开市时每 60 秒刷新"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updates every 60s while visible and trading"
+          }
+        }
+      }
+    },
     "market.a": {
       "extractionState": "manual",
       "localizations": {
@@ -419,128 +1604,338 @@
     },
     "market.status.preMarket": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Pre-market" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "盘前" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pre-market"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "盘前"
+          }
+        }
       }
     },
     "market.status.postMarket": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "After-hours" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "盘后" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After-hours"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "盘后"
+          }
+        }
       }
     },
     "market.status.overnight": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Overnight (24h)" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "夜盘（24h）" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overnight (24h)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "夜盘（24h）"
+          }
+        }
       }
     },
     "market.hours.us.extended": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "ET: Pre 04:00–09:30 · Post 16:00–20:00 (Mon–Fri) · Overnight 20:00–04:00 (Sun evening–Fri morning)" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "美东：盘前 04:00–09:30 · 盘后 16:00–20:00（周一至周五）· 夜盘 20:00–04:00（周日晚至周五早）" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ET: Pre 04:00–09:30 · Post 16:00–20:00 (Mon–Fri) · Overnight 20:00–04:00 (Sun evening–Fri morning)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "美东：盘前 04:00–09:30 · 盘后 16:00–20:00（周一至周五）· 夜盘 20:00–04:00（周日晚至周五早）"
+          }
+        }
       }
     },
     "market.extended.scheduleOnly": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Schedule only, not quote availability. Extended trading covers eligible stocks; holidays may differ." } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "状态仅表示交易时段，不代表已获取有效报价。扩展交易仅覆盖部分标的，节假日可能不同。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schedule only, not quote availability. Extended trading covers eligible stocks; holidays may differ."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "状态仅表示交易时段，不代表已获取有效报价。扩展交易仅覆盖部分标的，节假日可能不同。"
+          }
+        }
       }
     },
     "quote.extended.unavailable": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Extended quote unavailable" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "暂无有效扩展报价" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extended quote unavailable"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无有效扩展报价"
+          }
+        }
       }
     },
     "quote.extended.unavailable.help": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Showing the regular-session quote. No enabled source provided a verified trade from this extended session. See Settings → Data Sources for request results." } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "当前显示常规盘报价。已启用的数据源未返回可验证的本时段成交；请在设置 → 数据源中查看请求结果。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing the regular-session quote. No enabled source provided a verified trade from this extended session. See Settings → Data Sources for request results."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前显示常规盘报价。已启用的数据源未返回可验证的本时段成交；请在设置 → 数据源中查看请求结果。"
+          }
+        }
       }
     },
     "dataSource.xueqiu": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Xueqiu" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "雪球" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xueqiu"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雪球"
+          }
+        }
       }
     },
     "dataSource.sina": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Sina Finance" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "新浪财经" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sina Finance"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新浪财经"
+          }
+        }
       }
     },
     "dataSource.extended.title": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "US extended-session sources" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "美股扩展时段数据源" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "US extended-session sources"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "美股扩展时段数据源"
+          }
+        }
       }
     },
     "dataSource.extended.help": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Independent from regular-session sources. Tried in priority order for each missing symbol. Enabled does not guarantee live overnight coverage; stale or untimestamped trades are rejected. Results below describe the last request, not a guarantee of real-time data." } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "独立于常规盘数据源，按优先级逐标的补齐。启用不保证夜盘覆盖；旧时段或无成交时间的报价不会采用。下方为最近一次请求结果，不表示实时性保证。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Independent from regular-session sources. Tried in priority order for each missing symbol. Enabled does not guarantee live overnight coverage; stale or untimestamped trades are rejected. Results below describe the last request, not a guarantee of real-time data."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "独立于常规盘数据源，按优先级逐标的补齐。启用不保证夜盘覆盖；旧时段或无成交时间的报价不会采用。下方为最近一次请求结果，不表示实时性保证。"
+          }
+        }
       }
     },
     "dataSource.extended.nightCandidate": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Pre / Post / overnight candidate" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "盘前 / 盘后 / 夜盘候选" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pre / Post / overnight candidate"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "盘前 / 盘后 / 夜盘候选"
+          }
+        }
       }
     },
     "dataSource.extended.prePostOnly": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Pre / Post only" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "仅盘前 / 盘后" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pre / Post only"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅盘前 / 盘后"
+          }
+        }
       }
     },
     "dataSource.extended.check": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Refresh & check sources" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "刷新并检查数据源" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh & check sources"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新并检查数据源"
+          }
+        }
       }
     },
     "dataSource.extended.disabled": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Disabled" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已关闭" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disabled"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已关闭"
+          }
+        }
       }
     },
     "dataSource.extended.skippedNight": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Skipped during overnight trading: this source only supplies pre/post-market quotes." } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "夜盘期间跳过：该源仅提供盘前 / 盘后报价。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skipped during overnight trading: this source only supplies pre/post-market quotes."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "夜盘期间跳过：该源仅提供盘前 / 盘后报价。"
+          }
+        }
       }
     },
     "dataSource.extended.notRequested": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Not requested in the last batch (outside extended hours, no missing symbols, or configuration changed)." } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "最近批次未请求（不在扩展时段、无需补齐，或配置已更改）。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not requested in the last batch (outside extended hours, no missing symbols, or configuration changed)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近批次未请求（不在扩展时段、无需补齐，或配置已更改）。"
+          }
+        }
       }
     },
     "dataSource.extended.failed": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Request failed" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "请求失败" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Request failed"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求失败"
+          }
+        }
       }
     },
     "dataSource.extended.tradeTime": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Trade time (local)" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "成交时间（本地）" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trade time (local)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成交时间（本地）"
+          }
+        }
       }
     },
     "dataSource.extended.valid": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Valid quotes" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "本时段有效报价" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valid quotes"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本时段有效报价"
+          }
+        }
       }
     },
     "dataSource.extended.missing": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "No valid quote" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "暂无有效报价" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No valid quote"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无有效报价"
+          }
+        }
       }
     },
     "market.status.open": {
@@ -5755,32 +7150,82 @@
     },
     "etf.volume.unavailable": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Trade details unavailable; size bands need East Money or Tencent tick data. Retry in a minute or check the status line." } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "成交明细未就绪，无法计算大/中/小单成交额。请稍候自动重试，或点暂停后再恢复刷新。" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trade details unavailable; size bands need East Money or Tencent tick data. Retry in a minute or check the status line."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成交明细未就绪，无法计算大/中/小单成交额。请稍候自动重试，或点暂停后再恢复刷新。"
+          }
+        }
       }
     },
     "etf.volume.title": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Basket turnover by record size" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "篮子成交额分档" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Basket turnover by record size"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "篮子成交额分档"
+          }
+        }
       }
     },
     "etf.volume.caption": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Classified %.0f%% of session turnover (completed minutes)" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已分类 %.0f%% 时段成交额（已完成分钟）" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Classified %.0f%% of session turnover (completed minutes)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已分类 %.0f%% 时段成交额（已完成分钟）"
+          }
+        }
       }
     },
     "etf.volume.caption.gaps": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Classified %.0f%% · %d minutes with detail mismatch" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已分类 %.0f%% · %d 分钟明细未对齐" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Classified %.0f%% · %d minutes with detail mismatch"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已分类 %.0f%% · %d 分钟明细未对齐"
+          }
+        }
       }
     },
     "etf.error.volumeDetails": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Trade detail failed for %d ETFs" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%d 只成交明细获取失败" } }
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trade detail failed for %d ETFs"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d 只成交明细获取失败"
+          }
+        }
       }
     },
     "etf.error.minutes": {
@@ -5811,6 +7256,118 @@
           "stringUnit": {
             "state": "translated",
             "value": "对比曲线暂不可用"
+          }
+        }
+      }
+    },
+    "settings.mcp.section": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local MCP"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本机 MCP"
+          }
+        }
+      }
+    },
+    "settings.mcp.enabled": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable local MCP server"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用本机 MCP 服务"
+          }
+        }
+      }
+    },
+    "settings.mcp.endpoint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地址"
+          }
+        }
+      }
+    },
+    "settings.mcp.copyURL": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy URL"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制地址"
+          }
+        }
+      }
+    },
+    "settings.mcp.copyToken": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy token"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制令牌"
+          }
+        }
+      }
+    },
+    "settings.mcp.rotateToken": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rotate token"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轮换令牌"
+          }
+        }
+      }
+    },
+    "settings.mcp.hint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loopback only. Keep TickBar running. Bearer token is stored in Keychain, not app backups."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅本机回环访问。请保持 TickBar 运行。Bearer 令牌保存在钥匙串，不会进入应用备份。"
           }
         }
       }
