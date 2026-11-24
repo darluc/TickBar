@@ -83,7 +83,7 @@ actor TimelineHistoryFetcher {
             }
 
             guard rawPrices.count >= 2 else { return nil }
-            return downsample(prices: rawPrices, dates: rawDates, targetCount: 48)
+            return Self.downsample(prices: rawPrices, dates: rawDates, targetCount: 48)
         } catch {
             return nil
         }
@@ -128,7 +128,7 @@ actor TimelineHistoryFetcher {
             }
 
             guard rawPrices.count >= 2 else { return nil }
-            return downsample(prices: rawPrices, dates: rawDates, targetCount: 48)
+            return Self.downsample(prices: rawPrices, dates: rawDates, targetCount: 48)
         } catch {
             return nil
         }
@@ -165,26 +165,72 @@ actor TimelineHistoryFetcher {
             }
 
             guard rawPrices.count >= 2 else { return nil }
-            return downsample(prices: rawPrices, dates: rawDates, targetCount: 48)
+            return Self.downsample(prices: rawPrices, dates: rawDates, targetCount: 48)
         } catch {
             return nil
         }
     }
 
-    // MARK: - 均匀降采样到适合 Sparkline 尺寸的点数
+    // MARK: - LTTB (Largest-Triangle-Three-Buckets) 降采样，保留分时关键波峰与波谷
 
-    private func downsample(prices: [Double], dates: [Date], targetCount: Int) -> (points: [Double], dates: [Date]) {
-        guard prices.count > targetCount else { return (prices, dates) }
+    static func downsample(prices: [Double], dates: [Date], targetCount: Int) -> (points: [Double], dates: [Date]) {
+        guard prices.count == dates.count,
+              prices.count > targetCount,
+              targetCount >= 3 else {
+            return (prices, dates)
+        }
 
-        let step = Double(prices.count - 1) / Double(targetCount - 1)
         var sampledPrices: [Double] = []
         var sampledDates: [Date] = []
+        sampledPrices.reserveCapacity(targetCount)
+        sampledDates.reserveCapacity(targetCount)
 
-        for i in 0..<targetCount {
-            let idx = min(Int(round(Double(i) * step)), prices.count - 1)
-            sampledPrices.append(prices[idx])
-            sampledDates.append(dates[idx])
+        // 始终保留首点
+        sampledPrices.append(prices[0])
+        sampledDates.append(dates[0])
+
+        let bucketSize = Double(prices.count - 2) / Double(targetCount - 2)
+        var a = 0
+
+        for i in 0..<(targetCount - 2) {
+            let avgRangeStart = Int(floor(Double(i + 1) * bucketSize)) + 1
+            let avgRangeEnd = min(Int(floor(Double(i + 2) * bucketSize)) + 1, prices.count)
+
+            var avgX: Double = 0
+            var avgY: Double = 0
+            let avgCount = max(avgRangeEnd - avgRangeStart, 1)
+            for idx in avgRangeStart..<avgRangeEnd {
+                avgX += Double(idx)
+                avgY += prices[idx]
+            }
+            avgX /= Double(avgCount)
+            avgY /= Double(avgCount)
+
+            let rangeStart = Int(floor(Double(i) * bucketSize)) + 1
+            let rangeEnd = min(Int(floor(Double(i + 1) * bucketSize)) + 1, prices.count - 1)
+
+            let pointAX = Double(a)
+            let pointAY = prices[a]
+
+            var maxArea: Double = -1
+            var maxAreaIndex = rangeStart
+
+            for idx in rangeStart..<rangeEnd {
+                let area = abs((pointAX - avgX) * (prices[idx] - pointAY) - (pointAX - Double(idx)) * (avgY - pointAY)) * 0.5
+                if area > maxArea {
+                    maxArea = area
+                    maxAreaIndex = idx
+                }
+            }
+
+            sampledPrices.append(prices[maxAreaIndex])
+            sampledDates.append(dates[maxAreaIndex])
+            a = maxAreaIndex
         }
+
+        // 始终保留末点
+        sampledPrices.append(prices[prices.count - 1])
+        sampledDates.append(dates[dates.count - 1])
 
         return (sampledPrices, sampledDates)
     }
