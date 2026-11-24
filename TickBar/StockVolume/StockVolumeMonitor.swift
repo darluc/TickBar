@@ -99,51 +99,140 @@ final class StockVolumeMonitor: ObservableObject {
     }
 }
 
-/// One analysis window. Selecting another symbol cancels the previous symbol's requests.
+/// Manages independent stock-analysis windows so multiple symbols can be inspected side by side.
 @MainActor
 final class StockVolumeWindowController: NSObject, NSWindowDelegate {
     static let shared = StockVolumeWindowController()
-    private var window: NSWindow?
-    private var monitor: StockVolumeMonitor?
+
+    private struct Entry {
+        let window: NSWindow
+        let monitor: StockVolumeMonitor
+    }
+
+    private var entries: [SymbolID: Entry] = [:]
+    private var windowIndex: [ObjectIdentifier: SymbolID] = [:]
+    private var lastOpenedOrigin: NSPoint?
+    private let requestGate = ETFRequestGate()
+    private let makeMonitor: (SymbolID, String) -> StockVolumeMonitor
+    private let defaultSize = NSSize(width: 680, height: 640)
+    private let cascadeStep: CGFloat = 28
+
+    override convenience init() {
+        let gate = ETFRequestGate()
+        self.init(requestGate: gate) { symbol, name in
+            StockVolumeMonitor(symbol: symbol, name: name, worker: StockVolumeWorker(service: StockVolumeService(gate: gate)))
+        }
+    }
+
+    init(requestGate: ETFRequestGate = ETFRequestGate(),
+         makeMonitor: @escaping (SymbolID, String) -> StockVolumeMonitor) {
+        self.makeMonitor = makeMonitor
+        super.init()
+        _ = requestGate
+    }
+
+    var openSymbols: Set<SymbolID> { Set(entries.keys) }
+
+    func window(for symbol: SymbolID) -> NSWindow? { entries[symbol]?.window }
 
     func show(symbol: SymbolID, name: String) {
         guard StockVolumeService.supports(symbol) else { return }
-        if monitor?.symbol == symbol, let window {
-            window.deminiaturize(nil)
-            window.makeKeyAndOrderFront(nil)
-            monitor?.setVisible(true)
+        if let existing = entries[symbol] {
+            existing.window.deminiaturize(nil)
+            existing.window.makeKeyAndOrderFront(nil)
+            existing.monitor.setVisible(true)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
-        window?.close()
-        let model = StockVolumeMonitor(symbol: symbol, name: name)
-        let hosting = NSHostingController(rootView: StockVolumePanel(monitor: model))
+
+        let model = makeMonitor(symbol, name)
+        let hosting = NSHostingController(rootView: StockVolumePanel(monitor: model, hasTransparentTitlebar: true))
         let window = NSWindow(contentViewController: hosting)
         window.title = "\(name) · \(L("stockAnalysis.title"))"
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.setContentSize(NSSize(width: 780, height: 720))
-        window.minSize = NSSize(width: 680, height: 600)
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.isMovableByWindowBackground = true
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        window.hasShadow = true
+        window.setContentSize(defaultSize)
+        window.minSize = NSSize(width: 560, height: 500)
         window.isReleasedWhenClosed = false
         window.delegate = self
-        self.window = window
-        monitor = model
-        window.center()
+
+        position(window)
+
+        entries[symbol] = Entry(window: window, monitor: model)
+        windowIndex[ObjectIdentifier(window)] = symbol
+
         window.makeKeyAndOrderFront(nil)
         model.setVisible(true)
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    func closeAll() {
+        for entry in Array(entries.values) {
+            entry.window.close()
+        }
+    }
+
+    private func position(_ window: NSWindow) {
+        guard !entries.isEmpty,
+              let screen = NSScreen.main ?? window.screen else {
+            window.center()
+            lastOpenedOrigin = window.frame.origin
+            return
+        }
+        let anchor = lastOpenedOrigin ?? entries.values.first?.window.frame.origin
+        guard let origin = anchor else {
+            window.center()
+            lastOpenedOrigin = window.frame.origin
+            return
+        }
+        let frame = screen.visibleFrame
+        let width = window.frame.width
+        let height = window.frame.height
+        var nextX = origin.x + cascadeStep
+        var nextY = origin.y - cascadeStep
+        if nextX + width > frame.maxX - 16 || nextY < frame.minY + 16 {
+            nextX = frame.minX + 48
+            nextY = frame.maxY - height - 48
+        }
+        let nextOrigin = NSPoint(
+            x: max(frame.minX + 16, min(nextX, frame.maxX - width - 16)),
+            y: max(frame.minY + 16, min(nextY, frame.maxY - height - 16))
+        )
+        window.setFrameOrigin(nextOrigin)
+        lastOpenedOrigin = nextOrigin
+    }
+
+    private func entry(for notification: Notification) -> (SymbolID, Entry)? {
+        guard let window = notification.object as? NSWindow,
+              let symbol = windowIndex[ObjectIdentifier(window)],
+              let entry = entries[symbol] else { return nil }
+        return (symbol, entry)
+    }
+
     func windowWillClose(_ notification: Notification) {
-        monitor?.setVisible(false)
-        monitor = nil
-        window = nil
+        guard let (symbol, entry) = entry(for: notification) else { return }
+        entry.monitor.setVisible(false)
+        entries.removeValue(forKey: symbol)
+        windowIndex.removeValue(forKey: ObjectIdentifier(entry.window))
+        if entries.isEmpty { lastOpenedOrigin = nil }
     }
 
     func windowDidChangeOcclusionState(_ notification: Notification) {
-        guard let window else { return }
-        monitor?.setVisible(window.isVisible && !window.isMiniaturized && window.occlusionState.contains(.visible))
+        guard let (_, entry) = entry(for: notification) else { return }
+        let window = entry.window
+        entry.monitor.setVisible(window.isVisible && !window.isMiniaturized && window.occlusionState.contains(.visible))
     }
 
-    func windowDidMiniaturize(_ notification: Notification) { monitor?.setVisible(false) }
-    func windowDidDeminiaturize(_ notification: Notification) { monitor?.setVisible(true) }
+    func windowDidMiniaturize(_ notification: Notification) {
+        entry(for: notification)?.1.monitor.setVisible(false)
+    }
+
+    func windowDidDeminiaturize(_ notification: Notification) {
+        entry(for: notification)?.1.monitor.setVisible(true)
+    }
 }

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum StockVolumeChartMode: String, CaseIterable {
@@ -15,93 +16,191 @@ struct StockVolumePanel: View {
     @State private var chartMode: StockVolumeChartMode
     @State private var texture = false
     @State private var selectedSlot: Int?
+    private let hasTransparentTitlebar: Bool
 
     init(monitor: StockVolumeMonitor, chartMode: StockVolumeChartMode = .classified,
-         holdings: StockHoldingsMonitor? = nil) {
+         holdings: StockHoldingsMonitor? = nil, hasTransparentTitlebar: Bool = false) {
         self.monitor = monitor
         _chartMode = State(initialValue: chartMode)
         _holdings = StateObject(wrappedValue: holdings
                                 ?? StockHoldingsMonitor(code: monitor.symbol.code, name: monitor.name))
+        self.hasTransparentTitlebar = hasTransparentTitlebar
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
-            Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let display = monitor.display {
-                        content(display)
-                    } else if monitor.refreshing {
-                        ProgressView(L("volume.loading")).frame(maxWidth: .infinity, minHeight: 220)
-                    } else {
-                        Label(monitor.error ?? L("volume.noTrades"), systemImage: "exclamationmark.circle")
-                            .frame(maxWidth: .infinity, minHeight: 220)
+        ZStack {
+            StockVolumeGlassBackground()
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                header
+                Divider().opacity(0.35)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if let display = monitor.display {
+                            content(display)
+                        } else if monitor.refreshing {
+                            ProgressView(L("volume.loading"))
+                                .controlSize(.small)
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, minHeight: 200)
+                        } else {
+                            Label(monitor.error ?? L("volume.noTrades"), systemImage: "exclamationmark.circle")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, minHeight: 200)
+                        }
+                        Text(L("volume.method"))
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        StockHoldingsSection(monitor: holdings)
                     }
-                    Text(L("volume.method")).font(.system(size: 11)).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Divider()
-                    StockHoldingsSection(monitor: holdings)
+                    .padding(12)
                 }
-                .padding(.bottom, 4)
+                Divider().opacity(0.35)
+                footer
             }
-            Divider()
-            footer
         }
-        .padding(20)
-        .frame(minWidth: 640, minHeight: 560)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(minWidth: 560, minHeight: 500)
     }
 
+    // MARK: - Popover-Consistent Header
+
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(monitor.name).font(.system(size: 20, weight: .semibold))
-                Text("\(monitor.symbol.code) · \(L("stockAnalysis.title"))")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+        HStack(spacing: 8) {
+            HStack(spacing: 6) {
+                MarketBadge(market: monitor.symbol.market)
+                Text(monitor.name)
+                    .font(.system(size: 14, weight: .semibold))
+                    .lineLimit(1)
+                Text(monitor.symbol.code)
+                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                Text("· \(L("stockAnalysis.title"))")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
-            Spacer()
-            Button { monitor.togglePause() } label: {
-                Label(L(monitor.paused ? "volume.resume" : "volume.pause"),
-                      systemImage: monitor.paused ? "play" : "pause")
+            Spacer(minLength: 8)
+            HStack(spacing: 4) {
+                toolButton(
+                    systemName: monitor.paused ? "play.fill" : "pause",
+                    active: monitor.paused,
+                    help: L(monitor.paused ? "volume.resume" : "volume.pause")
+                ) {
+                    monitor.togglePause()
+                }
+                toolButton(
+                    systemName: "arrow.clockwise",
+                    active: false,
+                    help: L("volume.refresh"),
+                    disabled: monitor.refreshing
+                ) {
+                    monitor.refreshNow()
+                }
             }
-            Button { monitor.refreshNow() } label: {
-                Label(L("volume.refresh"), systemImage: "arrow.clockwise")
-            }
-            .disabled(monitor.refreshing)
         }
+        .padding(.leading, hasTransparentTitlebar ? 76 : 12)
+        .padding(.trailing, 12)
+        .padding(.top, hasTransparentTitlebar ? 10 : 9)
+        .padding(.bottom, 8)
     }
+
+    private func toolButton(
+        systemName: String,
+        active: Bool,
+        help: String,
+        disabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11.5, weight: active ? .semibold : .regular))
+                .foregroundColor(active ? SemanticColors.pulseBrandBlue : .secondary)
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+                .opacity(disabled ? 0.4 : 1)
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .help(help)
+    }
+
+    // MARK: - Content
 
     @ViewBuilder
     private func content(_ display: StockVolumeDisplay) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L("volume.total")).font(.system(size: 11)).foregroundStyle(.secondary)
-                Text(Self.hands(display.total)).font(.system(size: 26, weight: .semibold))
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("\(display.day) · \(L("volume.through")) \(ETFTime.label(slot: display.throughSlot))")
-                Text(String(format: L("volume.coverage"), display.coverage * 100))
-            }
-            .font(.system(size: 11)).foregroundStyle(.secondary)
-        }
+        kpiCards(display)
+
         if display.inconsistentMinutes > 0 {
             Label(L("volume.gaps"), systemImage: "exclamationmark.triangle")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .font(.system(size: 10))
+                .foregroundStyle(.orange)
         }
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
+
+        chartCard(display)
+        summaryTable(display)
+    }
+
+    private func kpiCards(_ display: StockVolumeDisplay) -> some View {
+        HStack(spacing: 8) {
+            metricCard(
+                title: L("volume.total"),
+                value: Self.number(display.total),
+                unit: L("volume.hands"),
+                caption: "\(display.day) · \(L("volume.through")) \(ETFTime.label(slot: display.throughSlot))"
+            )
+            metricCard(
+                title: L("volume.quality"),
+                value: String(format: "%.0f%%", display.coverage * 100),
+                unit: "",
+                caption: display.partialMinutes + display.estimatedMinutes > 0
+                    ? String(format: L("volume.qualityNote"), display.partialMinutes, display.estimatedMinutes)
+                    : String(format: L("volume.coverage"), display.coverage * 100)
+            )
+        }
+    }
+
+    private func metricCard(title: String, value: String, unit: String, caption: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+            (Text(value).font(.system(size: 21, weight: .semibold, design: .rounded))
+                + Text(unit.isEmpty ? "" : " \(unit)").font(.system(size: 11)).foregroundColor(.secondary))
+                .monospacedDigit()
+            Text(caption)
+                .font(.system(size: 9.5))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+    }
+
+    private func chartCard(_ display: StockVolumeDisplay) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 8) {
                 Picker(L("volume.chart"), selection: $chartMode) {
                     ForEach(StockVolumeChartMode.allCases, id: \.self) { mode in
                         Text(mode.title).tag(mode)
                     }
                 }
-                .pickerStyle(.segmented).labelsHidden().frame(width: 380)
+                .pickerStyle(.segmented)
+                .controlSize(.small)
+                .labelsHidden()
+                .fixedSize()
                 Spacer()
-                Toggle(L("volume.texture"), isOn: $texture).toggleStyle(.checkbox).font(.system(size: 11))
+                Toggle(L("volume.texture"), isOn: $texture)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
             }
-            HStack(spacing: 18) {
+            HStack(spacing: 14) {
                 ForEach(StockVolumeBand.allCases, id: \.rawValue) { band in
                     legend(band.title, index: band.rawValue)
                 }
@@ -116,7 +215,7 @@ struct StockVolumePanel: View {
                             let x = StockVolumeChart.x(selectedSlot, width: size.width)
                             var line = Path()
                             line.move(to: CGPoint(x: x, y: 4))
-                            line.addLine(to: CGPoint(x: x, y: size.height - 22))
+                            line.addLine(to: CGPoint(x: x, y: size.height - 20))
                             context.stroke(line, with: .color(.primary.opacity(0.45)), lineWidth: 1)
                         }.allowsHitTesting(false)
                     }
@@ -130,7 +229,7 @@ struct StockVolumePanel: View {
                     }
                 }
             }
-            .frame(height: 190)
+            .frame(height: 185)
             .chartAccessibility(chartMode.title, value: chartMode == .net
                                 ? (display.minutes.contains { $0.netAmount != nil }
                                    ? StockVolumeBand.allCases.map { band in
@@ -139,41 +238,14 @@ struct StockVolumePanel: View {
                                    : L("volume.netMissing"))
                                 : Self.hands(display.total))
             if chartMode == .net {
-                Text(L("volume.netHint")).font(.system(size: 10)).foregroundStyle(.secondary)
+                Text(L("volume.netHint"))
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(.secondary)
             }
             readout(display)
         }
-        .padding(12)
-        .background(StockVolumeChart.surface(dark: scheme == .dark))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-
-        summaryTable(display)
-        DisclosureGroup(L(chartMode == .net ? "volume.netTable" : "volume.minuteTable")) {
-            Group {
-                if chartMode == .net {
-                    Table(display.minutes) {
-                        TableColumn(L("volume.time")) { Text(ETFTime.label(slot: $0.slot)) }.width(65)
-                        TableColumn(StockVolumeBand.large.title) { Text($0.netAmounts.map { Self.amount($0[0]) } ?? "—") }
-                        TableColumn(StockVolumeBand.medium.title) { Text($0.netAmounts.map { Self.amount($0[1]) } ?? "—") }
-                        TableColumn(StockVolumeBand.small.title) { Text($0.netAmounts.map { Self.amount($0[2]) } ?? "—") }
-                        TableColumn(L("volume.net")) { Text($0.netAmount.map(Self.amount) ?? "—") }
-                        TableColumn(L("volume.quality")) { Text($0.quality.title) }.width(56)
-                    }
-                } else {
-                    Table(display.minutes) {
-                        TableColumn(L("volume.time")) { Text(ETFTime.label(slot: $0.slot)) }.width(65)
-                        TableColumn(L("volume.totalChart")) { Text(Self.number($0.total)) }
-                        TableColumn(StockVolumeBand.large.title) { Text(Self.number($0.classified[0])) }
-                        TableColumn(StockVolumeBand.medium.title) { Text(Self.number($0.classified[1])) }
-                        TableColumn(StockVolumeBand.small.title) { Text(Self.number($0.classified[2])) }
-                        TableColumn(L("volume.unknown")) { Text(Self.number($0.missing)) }
-                        TableColumn(L("volume.quality")) { Text($0.quality.title) }.width(56)
-                    }
-                }
-            }
-            .font(.system(size: 11)).monospacedDigit().frame(height: 200)
-        }
-        .font(.system(size: 11))
+        .padding(10)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private func legend(_ title: String, index: Int) -> some View {
@@ -181,46 +253,57 @@ struct StockVolumePanel: View {
             Canvas { context, size in
                 StockVolumeChart.fill(&context, rect: CGRect(origin: .zero, size: size), index: index,
                                       dark: scheme == .dark, texture: texture || differentiate)
-            }.frame(width: 12, height: 10).accessibilityHidden(true)
+            }
+            .frame(width: 11, height: 8)
+            .clipShape(RoundedRectangle(cornerRadius: 2))
+            .accessibilityHidden(true)
             Text(title).foregroundStyle(.secondary)
-        }.font(.system(size: 10))
+        }
+        .font(.system(size: 9.5))
     }
 
     @ViewBuilder
     private func readout(_ display: StockVolumeDisplay) -> some View {
         if let slot = selectedSlot, let minute = display.minutes.first(where: { $0.slot == slot }) {
-            if chartMode == .net {
-                Text("\(ETFTime.label(slot: slot))  ·  \(L("volume.net")) \(minute.netAmount.map(Self.amount) ?? "—") \(L("volume.unitAmount"))  ·  \(minute.quality.title)")
-                    .font(.system(size: 11)).monospacedDigit()
-                if let nets = minute.netAmounts {
-                    HStack(spacing: 14) {
-                        ForEach(StockVolumeBand.allCases, id: \.rawValue) { band in
-                            Text("\(band.title) \(Self.amount(nets[band.rawValue]))")
+            VStack(alignment: .leading, spacing: 3) {
+                if chartMode == .net {
+                    Text("\(ETFTime.label(slot: slot))  ·  \(L("volume.net")) \(minute.netAmount.map(Self.amount) ?? "—") \(L("volume.unitAmount"))  ·  \(minute.quality.title)")
+                        .font(.system(size: 10.5, weight: .medium)).monospacedDigit()
+                    if let nets = minute.netAmounts {
+                        HStack(spacing: 12) {
+                            ForEach(StockVolumeBand.allCases, id: \.rawValue) { band in
+                                Text("\(band.title) \(Self.amount(nets[band.rawValue]))")
+                            }
                         }
-                    }.font(.system(size: 10)).monospacedDigit().foregroundStyle(.secondary)
-                } else {
-                    Text(L("volume.netMissing")).font(.system(size: 10)).foregroundStyle(.secondary)
-                }
-            } else {
-                Text("\(ETFTime.label(slot: slot))  ·  \(L("volume.totalChart")) \(Self.hands(minute.total))  ·  \(minute.quality.title)")
-                    .font(.system(size: 11)).monospacedDigit()
-                HStack(spacing: 14) {
-                    ForEach(StockVolumeBand.allCases, id: \.rawValue) { band in
-                        Text("\(band.title) \(Self.number(minute.classified[band.rawValue]))")
+                        .font(.system(size: 9.5)).monospacedDigit().foregroundStyle(.secondary)
+                    } else {
+                        Text(L("volume.netMissing")).font(.system(size: 9.5)).foregroundStyle(.secondary)
                     }
-                    Text("\(L("volume.unknown")) \(Self.number(minute.missing))")
-                }.font(.system(size: 10)).monospacedDigit().foregroundStyle(.secondary)
+                } else {
+                    Text("\(ETFTime.label(slot: slot))  ·  \(L("volume.totalChart")) \(Self.hands(minute.total))  ·  \(minute.quality.title)")
+                        .font(.system(size: 10.5, weight: .medium)).monospacedDigit()
+                    HStack(spacing: 12) {
+                        ForEach(StockVolumeBand.allCases, id: \.rawValue) { band in
+                            Text("\(band.title) \(Self.number(minute.classified[band.rawValue]))")
+                        }
+                        Text("\(L("volume.unknown")) \(Self.number(minute.missing))")
+                    }
+                    .font(.system(size: 9.5)).monospacedDigit().foregroundStyle(.secondary)
+                }
             }
+            .frame(minHeight: 30, alignment: .topLeading)
         } else {
-            Text(L("volume.hover")).font(.system(size: 11)).foregroundStyle(.secondary)
-                .frame(height: 38, alignment: .topLeading)
+            Text(L("volume.hover"))
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .frame(minHeight: 30, alignment: .topLeading)
         }
     }
 
     private func summaryTable(_ display: StockVolumeDisplay) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L("volume.summary")).font(.system(size: 12, weight: .semibold))
-            Grid(alignment: .trailing, horizontalSpacing: 14, verticalSpacing: 10) {
+            Grid(alignment: .trailing, horizontalSpacing: 12, verticalSpacing: 8) {
                 GridRow {
                     Text(L("volume.band")).gridColumnAlignment(.leading)
                     Text(L("volume.unitHands"))
@@ -228,14 +311,20 @@ struct StockVolumePanel: View {
                     Text(L("volume.sell"))
                     Text(L("volume.neutral"))
                     Text(L("volume.net"))
-                }.foregroundStyle(.secondary)
+                }
+                .font(.system(size: 9.5))
+                .foregroundStyle(.secondary)
+
                 ForEach(StockVolumeBand.allCases, id: \.rawValue) { band in
                     let summary = display.summaries[band.rawValue]
                     GridRow {
-                        VStack(alignment: .leading, spacing: 3) {
+                        VStack(alignment: .leading, spacing: 2) {
                             legend(band.title, index: band.rawValue)
-                            Text(band.threshold).font(.system(size: 9)).foregroundStyle(.secondary)
-                        }.frame(maxWidth: .infinity, alignment: .leading)
+                            Text(band.threshold)
+                                .font(.system(size: 8.5))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         Text(Self.number(summary.hands))
                         Text(Self.amount(summary.buy))
                         Text(Self.amount(summary.sell))
@@ -244,39 +333,85 @@ struct StockVolumePanel: View {
                     }
                 }
             }
-            .font(.system(size: 11)).monospacedDigit()
-            if display.partialMinutes + display.estimatedMinutes > 0 {
-                Text(String(format: L("volume.qualityNote"), display.partialMinutes, display.estimatedMinutes))
-                    .font(.system(size: 10)).foregroundStyle(.secondary)
-            }
+            .font(.system(size: 10.5, design: .monospaced))
+            .monospacedDigit()
         }
+        .padding(10)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
+    // MARK: - Popover-Consistent Footer
+
     private var footer: some View {
-        HStack(alignment: .top, spacing: 8) {
-            if monitor.refreshing { ProgressView().controlSize(.small) }
-            if let error = monitor.error, monitor.display != nil {
-                Label("\(L("volume.keptPrevious")) \(error)", systemImage: "exclamationmark.triangle")
-            } else if monitor.paused {
-                Text(L("volume.paused"))
-            } else if let display = monitor.display {
-                Text(String(format: L("volume.sources"), display.detailSource.title, display.minuteSource.title)
-                     + " · " + L("volume.source"))
-            } else {
-                Text(L("volume.source"))
-            }
+        HStack(spacing: 6) {
+            Circle()
+                .fill(footerStatusColor)
+                .frame(width: 5, height: 5)
+
+            Text(footerStatusText)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .help(footerStatusText)
+
             Spacer()
-            if let updated = monitor.updated {
-                Text(updated, style: .time)
+
+            if monitor.refreshing {
+                ProgressView()
+                    .controlSize(.mini)
+                    .scaleEffect(0.6)
+                    .frame(width: 10, height: 10)
+            } else if let updated = monitor.updated {
+                Text(Self.timeFormatter.string(from: updated))
+                    .font(.system(size: 9.5, design: .monospaced))
+                    .foregroundStyle(.secondary.opacity(0.6))
             }
         }
-        .font(.system(size: 10)).foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
     }
+
+    private var footerStatusColor: Color {
+        if monitor.error != nil { return .orange }
+        if monitor.paused { return .secondary }
+        return Color(red: 0.04, green: 0.66, blue: 0.35)
+    }
+
+    private var footerStatusText: String {
+        if let error = monitor.error, monitor.display != nil {
+            return "\(L("volume.keptPrevious")) \(error)"
+        }
+        if monitor.paused {
+            return L("volume.paused")
+        }
+        if let display = monitor.display {
+            return String(format: L("volume.sources"), display.detailSource.title, display.minuteSource.title)
+                + " · " + L("volume.source")
+        }
+        return L("volume.source")
+    }
+
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
 
     static func number(_ value: Double) -> String { String(format: "%.0f", value) }
     static func hands(_ value: Double) -> String { "\(number(value)) \(L("volume.hands"))" }
     static func amount(_ value: Double) -> String { String(format: "%.2f", value / 10_000) }
+}
+
+private struct StockVolumeGlassBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .popover
+        view.blendingMode = .behindWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
 
 private struct StockVolumeChart: View, Equatable {
@@ -284,10 +419,10 @@ private struct StockVolumeChart: View, Equatable {
     let mode: StockVolumeChartMode
     let dark: Bool
     let texture: Bool
-    private static let gutter: CGFloat = 48
+    private static let gutter: CGFloat = 46
 
     static func surface(dark: Bool) -> Color {
-        dark ? Color(red: 26/255, green: 26/255, blue: 25/255) : Color(red: 252/255, green: 252/255, blue: 251/255)
+        dark ? Color(red: 28/255, green: 30/255, blue: 34/255) : Color(red: 248/255, green: 249/255, blue: 251/255)
     }
 
     private static func color(_ index: Int, dark: Bool) -> Color {
@@ -321,7 +456,7 @@ private struct StockVolumeChart: View, Equatable {
 
     var body: some View {
         Canvas { context, size in
-            let height = max(size.height - 26, 1)
+            let height = max(size.height - 24, 1)
             let netMode = mode == .net
             let peak = netMode ? max(minutes.map(\.netExtent).max() ?? 0, 10_000)
                                : max(minutes.map(\.total).max() ?? 0, 1)
@@ -332,16 +467,16 @@ private struct StockVolumeChart: View, Equatable {
                 line.move(to: CGPoint(x: Self.gutter, y: y))
                 line.addLine(to: CGPoint(x: size.width, y: y))
                 let zero = netMode && fraction == 0.5
-                context.stroke(line, with: .color(.secondary.opacity(zero ? 0.55 : 0.16)), lineWidth: zero ? 1 : 0.5)
+                context.stroke(line, with: .color(.secondary.opacity(zero ? 0.45 : 0.14)), lineWidth: zero ? 1 : 0.5)
                 let value = peak * (netMode ? fraction * 2 - 1 : fraction)
                 let label = netMode ? (zero ? "0" : String(format: "%+.1f", value / 10_000))
                                     : (value >= 1000 ? String(format: "%.1fk", value / 1000) : String(format: "%.0f", value))
-                context.draw(Text(label).font(.system(size: 9)).foregroundColor(.secondary),
+                context.draw(Text(label).font(.system(size: 8.5, design: .monospaced)).foregroundColor(.secondary),
                              at: CGPoint(x: Self.gutter - 5, y: y), anchor: .trailing)
             }
             for (slot, label) in ETFTime.axis {
-                context.draw(Text(label).font(.system(size: 9)).foregroundColor(.secondary),
-                             at: CGPoint(x: Self.x(slot, width: size.width), y: size.height - 10),
+                context.draw(Text(label).font(.system(size: 8.5, design: .monospaced)).foregroundColor(.secondary),
+                             at: CGPoint(x: Self.x(slot, width: size.width), y: size.height - 8),
                              anchor: slot == 240 ? .trailing : (slot == 0 ? .leading : .center))
             }
             for minute in minutes {

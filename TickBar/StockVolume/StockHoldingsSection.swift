@@ -7,39 +7,67 @@ struct StockHoldingsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Text(L("holdings.disclosed")).font(.system(size: 12, weight: .semibold))
+                Text(L("holdings.disclosed"))
+                    .font(.system(size: 12, weight: .semibold))
                 Spacer()
-                if monitor.loading { ProgressView().controlSize(.small) }
-                Button(L("holdings.refresh")) { Task { await monitor.refresh() } }
-                    .disabled(monitor.loading)
+                if monitor.loading {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .scaleEffect(0.75)
+                }
+                Button {
+                    Task { await monitor.refresh() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                        .opacity(monitor.loading ? 0.4 : 1)
+                }
+                .buttonStyle(.plain)
+                .disabled(monitor.loading)
+                .help(L("holdings.refresh"))
             }
             Text(L("holdings.scope"))
-                .font(.system(size: 10)).foregroundStyle(.secondary)
+                .font(.system(size: 9.5))
+                .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let error = monitor.error {
-                Text(error).font(.system(size: 10)).foregroundStyle(.orange)
+                Text(error)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.orange)
             }
             if let result = monitor.result {
                 card(result)
             }
             Text(L("holdings.profitUnavailable"))
-                .font(.system(size: 10)).foregroundStyle(.secondary)
+                .font(.system(size: 9.5))
+                .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(10)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
         .task { await monitor.load() }
     }
 
     private func card(_ stock: StockHoldingResult) -> some View {
         let groups = Dictionary(grouping: stock.holdings, by: \.holder)
         return VStack(alignment: .leading, spacing: 6) {
-            Text("\(L("holdings.latest")) \(stock.latestPeriod.prefix(10))")
-                .font(.system(size: 10)).foregroundStyle(.secondary)
-            if let fetchedAt = stock.fetchedAt {
-                Text(String(format: L("holdings.updated"), fetchedAt.formatted(date: .abbreviated, time: .shortened)))
-                    .font(.system(size: 9)).foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                Text("\(L("holdings.latest")) \(stock.latestPeriod.prefix(10))")
+                    .font(.system(size: 9.5, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                if let fetchedAt = stock.fetchedAt {
+                    Text("· " + String(format: L("holdings.updated"), fetchedAt.formatted(date: .abbreviated, time: .shortened)))
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary.opacity(0.8))
+                }
             }
             if groups.isEmpty {
-                Text(L("holdings.none")).font(.system(size: 10)).foregroundStyle(.secondary)
+                Text(L("holdings.none"))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
             }
             ForEach(groups.keys.sorted(), id: \.self) { holder in
                 let records = (groups[holder] ?? []).sorted { $0.period > $1.period }
@@ -59,11 +87,16 @@ struct StockHoldingsSection: View {
                         if history.count >= 2 {
                             historyChart(history)
                         }
-                    }.font(.system(size: 10)).monospacedDigit().padding(.vertical, 2)
+                    }
+                    .font(.system(size: 10))
+                    .monospacedDigit()
+                    .padding(.vertical, 3)
                 }
             }
-        }.frame(maxWidth: .infinity, alignment: .leading)
-            .padding(8).background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 7))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 
     private func historyChart(_ records: [DisclosedHolding]) -> some View {

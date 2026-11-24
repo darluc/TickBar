@@ -577,4 +577,41 @@ final class StockVolumeMonitorTests: XCTestCase {
         }
         model.setVisible(false)
     }
+
+    func testWindowControllerOpensMultipleSymbolsSimultaneouslyAndClosesIndependently() async throws {
+        let worker = VolumeTestWorker()
+        var createdCount = 0
+        let controller = StockVolumeWindowController { symbol, name in
+            createdCount += 1
+            return StockVolumeMonitor(symbol: symbol, name: name, worker: worker, interval: 60, marketStatus: { .closed })
+        }
+        defer { controller.closeAll() }
+
+        let symA = SymbolID(code: "000001", market: .a)
+        let symB = SymbolID(code: "600519", market: .a)
+        let unsupported = SymbolID(code: "AAPL", market: .us)
+
+        controller.show(symbol: symA, name: "平安银行")
+        controller.show(symbol: symB, name: "贵州茅台")
+        controller.show(symbol: unsupported, name: "Apple")
+
+        XCTAssertEqual(controller.openSymbols, [symA, symB])
+        XCTAssertEqual(createdCount, 2)
+        let winA = try XCTUnwrap(controller.window(for: symA))
+        let winB = try XCTUnwrap(controller.window(for: symB))
+        XCTAssertNotIdentical(winA, winB)
+        XCTAssertTrue(winA.titlebarAppearsTransparent)
+        XCTAssertEqual(winA.titleVisibility, .hidden)
+
+        // Re-opening an already open symbol reuses its existing window without duplicating
+        controller.show(symbol: symA, name: "平安银行")
+        XCTAssertEqual(createdCount, 2)
+        XCTAssertIdentical(controller.window(for: symA), winA)
+
+        // Closing one window leaves the other stock analysis window intact
+        winA.close()
+        XCTAssertEqual(controller.openSymbols, [symB])
+        XCTAssertNil(controller.window(for: symA))
+        XCTAssertIdentical(controller.window(for: symB), winB)
+    }
 }

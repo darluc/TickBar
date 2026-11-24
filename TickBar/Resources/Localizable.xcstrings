@@ -68,7 +68,7 @@
     "volume.unknown": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "未分类" } }, "en": { "stringUnit": { "state": "translated", "value": "Unclassified" } } } },
     "volume.unitHands": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "成交量（手）" } }, "en": { "stringUnit": { "state": "translated", "value": "Volume (lots)" } } } },
     "volume.hands": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "手" } }, "en": { "stringUnit": { "state": "translated", "value": "lots" } } } },
-    "volume.hover": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "悬停查看每分钟成交量，或展开下方数据表" } }, "en": { "stringUnit": { "state": "translated", "value": "Hover to inspect a minute, or expand the data table below" } } } },
+    "volume.hover": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "悬停查看每分钟明细" } }, "en": { "stringUnit": { "state": "translated", "value": "Hover to inspect a minute" } } } },
     "volume.summary": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "分类统计 · 金额为估算值，单位万元" } }, "en": { "stringUnit": { "state": "translated", "value": "Classification · estimated amounts in CNY 10,000" } } } },
     "volume.band": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "明细量级" } }, "en": { "stringUnit": { "state": "translated", "value": "Record size" } } } },
     "volume.buy": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "主动买入" } }, "en": { "stringUnit": { "state": "translated", "value": "Buy" } } } },
