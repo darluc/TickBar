@@ -157,6 +157,7 @@ struct StockVolumePanel: View {
                         TableColumn(StockVolumeBand.medium.title) { Text($0.netAmounts.map { Self.amount($0[1]) } ?? "—") }
                         TableColumn(StockVolumeBand.small.title) { Text($0.netAmounts.map { Self.amount($0[2]) } ?? "—") }
                         TableColumn(L("volume.net")) { Text($0.netAmount.map(Self.amount) ?? "—") }
+                        TableColumn(L("volume.quality")) { Text($0.quality.title) }.width(56)
                     }
                 } else {
                     Table(display.minutes) {
@@ -166,6 +167,7 @@ struct StockVolumePanel: View {
                         TableColumn(StockVolumeBand.medium.title) { Text(Self.number($0.classified[1])) }
                         TableColumn(StockVolumeBand.small.title) { Text(Self.number($0.classified[2])) }
                         TableColumn(L("volume.unknown")) { Text(Self.number($0.missing)) }
+                        TableColumn(L("volume.quality")) { Text($0.quality.title) }.width(56)
                     }
                 }
             }
@@ -188,7 +190,7 @@ struct StockVolumePanel: View {
     private func readout(_ display: StockVolumeDisplay) -> some View {
         if let slot = selectedSlot, let minute = display.minutes.first(where: { $0.slot == slot }) {
             if chartMode == .net {
-                Text("\(ETFTime.label(slot: slot))  ·  \(L("volume.net")) \(minute.netAmount.map(Self.amount) ?? "—") \(L("volume.unitAmount"))")
+                Text("\(ETFTime.label(slot: slot))  ·  \(L("volume.net")) \(minute.netAmount.map(Self.amount) ?? "—") \(L("volume.unitAmount"))  ·  \(minute.quality.title)")
                     .font(.system(size: 11)).monospacedDigit()
                 if let nets = minute.netAmounts {
                     HStack(spacing: 14) {
@@ -200,7 +202,7 @@ struct StockVolumePanel: View {
                     Text(L("volume.netMissing")).font(.system(size: 10)).foregroundStyle(.secondary)
                 }
             } else {
-                Text("\(ETFTime.label(slot: slot))  ·  \(L("volume.totalChart")) \(Self.hands(minute.total))")
+                Text("\(ETFTime.label(slot: slot))  ·  \(L("volume.totalChart")) \(Self.hands(minute.total))  ·  \(minute.quality.title)")
                     .font(.system(size: 11)).monospacedDigit()
                 HStack(spacing: 14) {
                     ForEach(StockVolumeBand.allCases, id: \.rawValue) { band in
@@ -243,6 +245,10 @@ struct StockVolumePanel: View {
                 }
             }
             .font(.system(size: 11)).monospacedDigit()
+            if display.partialMinutes + display.estimatedMinutes > 0 {
+                Text(String(format: L("volume.qualityNote"), display.partialMinutes, display.estimatedMinutes))
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+            }
         }
     }
 

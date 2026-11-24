@@ -75,7 +75,7 @@ final class StockVolumeDataTests: XCTestCase {
         XCTAssertThrowsError(try StockVolumeService.parseMinutes(rows, code: "600519"))
     }
 
-    func testOnlyReconciledCompletedMinutesContributeToClassificationAndAmounts() throws {
+    func testTolerancePartialAndWindowEstimationPublishFuzzyButBoundedResults() throws {
         let trades: [StockVolumeTrade] = [
             .init(slot: 0, hands: 10, estimatedAmount: 99_999, side: 2),
             .init(slot: 1, hands: 100, estimatedAmount: 100_000, side: 1),
@@ -87,15 +87,73 @@ final class StockVolumeDataTests: XCTestCase {
         let display = try StockVolumeDisplay.build(day: "2026-11-12", reference: [0: 10, 1: 150, 2: 40, 3: 10, 4: 99], trades: trades)
         XCTAssertEqual(display.throughSlot, 3, "the still-changing latest minute is excluded")
         XCTAssertEqual(display.total, 210)
-        XCTAssertEqual(display.covered, 160)
-        XCTAssertEqual(display.inconsistentMinutes, 2, "under-counted and over-counted minutes stay unknown")
-        XCTAssertEqual(display.minutes[2].missing, 40)
-        XCTAssertEqual(display.minutes[3].missing, 10)
-        XCTAssertEqual(display.summaries[0].hands, 50)
-        XCTAssertEqual(display.summaries[0].buy, 1_000_000)
-        XCTAssertEqual(display.summaries[1].net, -100_000)
-        XCTAssertEqual(display.summaries[2].buy, 99_999)
-        XCTAssertEqual(display.coverage, 160.0 / 210.0)
+        XCTAssertEqual(display.minutes.map(\.quality), [.exact, .exact, .partial, .estimated])
+        XCTAssertEqual(display.coverage, 200.0 / 210.0, accuracy: 0.0001,
+                       "observed under-count is published as partial; the over-count is windowed")
+        XCTAssertEqual(display.estimatedMinutes, 1)
+        XCTAssertEqual(display.partialMinutes, 1)
+        XCTAssertEqual(display.inconsistentMinutes, 0)
+        XCTAssertEqual(display.minutes[2].missing, 10)
+        XCTAssertEqual(display.minutes[3].missing, 0)
+        XCTAssertEqual(display.summaries.reduce(0) { $0 + $1.hands }, 200)
+        XCTAssertEqual(display.summaries[0].neutral, 0)
+    }
+
+    func testWindowCompositionRepairsBoundaryAttributionWithoutInventingVolume() throws {
+        let display = try StockVolumeDisplay.build(day: "2026-11-12",
+            reference: [0: 100, 1: 100, 2: 100, 3: 100], trades: [
+                .init(slot: 0, hands: 100, estimatedAmount: 100_000, side: 2),
+                .init(slot: 2, hands: 200, estimatedAmount: 200_000, side: 2),
+                .init(slot: 3, hands: 100, estimatedAmount: 100_000, side: 2)
+            ])
+        XCTAssertEqual(display.throughSlot, 2)
+        XCTAssertEqual(display.minutes[0].quality, .exact)
+        XCTAssertEqual(display.minutes[1].quality, .estimated)
+        XCTAssertEqual(display.minutes[1].covered, 100, accuracy: 0.001)
+        XCTAssertEqual(display.minutes[2].quality, .estimated)
+        XCTAssertEqual(display.minutes[2].covered, 100, accuracy: 0.001)
+        XCTAssertEqual(display.coverage, 1)
+        XCTAssertEqual(display.inconsistentMinutes, 0)
+        XCTAssertEqual(display.summaries.reduce(0) { $0 + $1.hands }, 300)
+    }
+
+    func testRoundingToleranceStaysExactAndPartialKeepsAnExplicitRemainder() throws {
+        let exact = try StockVolumeDisplay.build(day: "2026-11-12",
+            reference: [0: 100, 1: 100, 2: 100], trades: [
+                .init(slot: 0, hands: 100, estimatedAmount: 100_000, side: 2),
+                .init(slot: 1, hands: 99, estimatedAmount: 100_000, side: 2),
+                .init(slot: 2, hands: 100, estimatedAmount: 100_000, side: 2)
+            ])
+        XCTAssertEqual(exact.minutes[1].quality, .exact)
+        XCTAssertEqual(exact.minutes[1].covered, 100, accuracy: 0.001)
+        XCTAssertEqual(exact.coverage, 1)
+
+        let partial = try StockVolumeDisplay.build(day: "2026-11-12",
+            reference: [0: 100, 1: 100, 2: 100], trades: [
+                .init(slot: 0, hands: 100, estimatedAmount: 100_000, side: 2),
+                .init(slot: 1, hands: 85, estimatedAmount: 100_000, side: 2),
+                .init(slot: 2, hands: 100, estimatedAmount: 100_000, side: 2)
+            ])
+        XCTAssertEqual(partial.minutes[1].quality, .partial)
+        XCTAssertEqual(partial.minutes[1].covered, 85)
+        XCTAssertEqual(partial.minutes[1].missing, 15, "the unobserved remainder stays unknown")
+        XCTAssertNil(partial.minutes[1].netAmounts)
+        XCTAssertEqual(partial.partialMinutes, 1)
+        XCTAssertEqual(partial.coverage, 185.0 / 200.0)
+    }
+
+    func testUnderCountStaysPartialAndMissingDetailStaysUnknown() throws {
+        let display = try StockVolumeDisplay.build(day: "2026-11-12",
+            reference: [0: 100, 1: 100, 2: 100], trades: [
+                .init(slot: 0, hands: 40, estimatedAmount: 100_000, side: 2),
+                .init(slot: 2, hands: 100, estimatedAmount: 100_000, side: 2)
+            ])
+        XCTAssertEqual(display.minutes[0].quality, .partial)
+        XCTAssertEqual(display.minutes[0].missing, 60)
+        XCTAssertEqual(display.minutes[1].quality, .unknown)
+        XCTAssertEqual(display.inconsistentMinutes, 1)
+        XCTAssertEqual(display.coverage, 0.2)
+        XCTAssertEqual(display.summaries.reduce(0) { $0 + $1.hands }, 40)
     }
 
     func testMinuteNetAmountsPreserveBuySellZeroNeutralAndMissing() throws {
@@ -108,14 +166,14 @@ final class StockVolumeDataTests: XCTestCase {
                 .init(slot: 2, hands: 50, estimatedAmount: 50_000, side: 2),
                 .init(slot: 2, hands: 50, estimatedAmount: 50_000, side: 1),
                 .init(slot: 3, hands: 100, estimatedAmount: 100_000, side: 4),
-                .init(slot: 4, hands: 50, estimatedAmount: 50_000, side: 2),
                 .init(slot: 5, hands: 10, estimatedAmount: 10_000, side: 2)
             ])
         XCTAssertEqual(display.minutes.map(\.netAmount), [20_000, -20_000, 0, 0, nil])
         XCTAssertEqual(display.minutes[0].buyAmount, 60_000)
         XCTAssertEqual(display.minutes[0].sellAmount, 40_000)
         XCTAssertEqual(display.minutes[3].buyAmount, 0, "neutral estimates never become net buys")
-        XCTAssertEqual(display.minutes[4].buyAmount, 0, "unreconciled estimates must not be published")
+        XCTAssertEqual(display.minutes[4].quality, .unknown)
+        XCTAssertEqual(display.minutes[4].buyAmount, 0, "unreconciled minutes must not be published")
         XCTAssertEqual(display.minutes.compactMap(\.netAmount).reduce(0, +), display.summaries.reduce(0) { $0 + $1.net })
         XCTAssertNil(display.minutes.first(where: { $0.slot == 5 }), "changing tail minutes stay excluded")
     }
@@ -130,7 +188,6 @@ final class StockVolumeDataTests: XCTestCase {
                 .init(slot: 1, hands: 40, estimatedAmount: 1_000_000, side: 1),
                 .init(slot: 1, hands: 30, estimatedAmount: 500_000, side: 2),
                 .init(slot: 1, hands: 30, estimatedAmount: 500_000, side: 2),
-                .init(slot: 2, hands: 50, estimatedAmount: 1_000_000, side: 2),
                 .init(slot: 3, hands: 100, estimatedAmount: 100_000, side: 4)
             ])
         XCTAssertEqual(display.minutes[0].netAmounts, [1_000_000, 1_000_000, -50_000])
@@ -180,6 +237,115 @@ final class StockVolumeDataTests: XCTestCase {
         }
         XCTAssertFalse(StockVolumeService.supports(SymbolID(code: "000001", market: .hk)))
     }
+
+    func testMergingKeepsCompleteMinutesWhenANewerSnapshotFallsBehindOrLosesReconciliation() throws {
+        let previous = try StockVolumeDisplay.build(day: "2026-11-12",
+            reference: [0: 100, 1: 100, 2: 100], trades: [
+                .init(slot: 0, hands: 100, estimatedAmount: 100_000, side: 2),
+                .init(slot: 1, hands: 100, estimatedAmount: 200_000, side: 4),
+                .init(slot: 2, hands: 100, estimatedAmount: 300_000, side: 1)
+            ])
+        let incoming = try StockVolumeDisplay.build(day: "2026-11-12",
+            reference: [0: 100, 1: 10, 2: 100, 3: 100], trades: [
+                .init(slot: 0, hands: 100, estimatedAmount: 150_000, side: 2),
+                .init(slot: 3, hands: 100, estimatedAmount: 50_000, side: 1)
+            ])
+        let merged = StockVolumeDisplay.merging(previous: previous, incoming)
+        XCTAssertEqual(merged.day, "2026-11-12")
+        XCTAssertEqual(merged.throughSlot, 2, "range only moves forward")
+        XCTAssertEqual(merged.minutes.map(\.slot), [0, 1, 2])
+        XCTAssertEqual(merged.coverage, 200.0 / 300.0, "slot 1 keeps its earlier reconciliation")
+        XCTAssertEqual(merged.inconsistentMinutes, 1)
+        XCTAssertEqual(merged.summaries[1].neutral, 200_000, "summaries are rebuilt from merged minutes")
+        XCTAssertEqual(merged.minutes[1].neutralAmounts[1], 200_000)
+
+        let tomorrow = try StockVolumeDisplay.build(day: "2026-11-13", reference: [240: 50], trades: [
+            .init(slot: 240, hands: 50, estimatedAmount: 50_000, side: 2)
+        ])
+        XCTAssertEqual(StockVolumeDisplay.merging(previous: merged, tomorrow), tomorrow)
+        let yesterday = try StockVolumeDisplay.build(day: "2026-11-11", reference: [240: 10], trades: [
+            .init(slot: 240, hands: 10, estimatedAmount: 10_000, side: 2)
+        ])
+        XCTAssertEqual(StockVolumeDisplay.merging(previous: merged, yesterday), merged,
+                       "an older trading day never replaces the current one")
+    }
+
+    func testServiceReusesCachedDetailRowsForTheSameTradingDay() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [VolumeRequestProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        let service = StockVolumeService(http: HTTPClient(session: session), gate: ETFRequestGate(spacing: 0))
+        let snapshot = try await service.details(symbol: .init(code: "000001", market: .a),
+                                                 cachedRows: ["09:30:00,10,1,0,2"])
+        XCTAssertEqual(snapshot.rows.count, 3)
+        XCTAssertEqual(snapshot.trades.count, 3)
+        XCTAssertEqual(snapshot.source, .eastMoney)
+    }
+
+    func testTransientRequestFailureRetriesBeforeFallingBack() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [RetryVolumeProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        RetryVolumeProtocol.reset()
+        let service = StockVolumeService(http: HTTPClient(session: session), gate: ETFRequestGate(spacing: 0))
+        let minutes = try await service.minutes(symbol: .init(code: "000001", market: .a))
+        XCTAssertEqual(minutes.source, .eastMoney)
+        XCTAssertEqual(RetryVolumeProtocol.trendsCalls, 2)
+    }
+}
+
+private actor SnapshotFixture: StockVolumeSnapshotFetching {
+    private(set) var minuteCalls = 0
+    private(set) var detailCalls = 0
+    private(set) var lastCachedRows: [String] = []
+    private var volumes: [Int: Double] = [0: 100, 1: 10]
+
+    func advance() { volumes[2] = 10 }
+
+    func minutes(symbol: SymbolID) async throws -> StockVolumeMinuteSnapshot {
+        minuteCalls += 1
+        return StockVolumeMinuteSnapshot(day: "2026-11-12", volumes: volumes, source: .eastMoney)
+    }
+
+    func details(symbol: SymbolID, cachedRows: [String]) async throws -> StockVolumeDetailSnapshot {
+        detailCalls += 1
+        lastCachedRows = cachedRows
+        return StockVolumeDetailSnapshot(day: nil, trades: [
+            StockVolumeTrade(slot: 0, hands: 100, estimatedAmount: 100_000, side: 2),
+            StockVolumeTrade(slot: 1, hands: 10, estimatedAmount: 10_000, side: 1)
+        ], rows: cachedRows + ["09:25:00,10,100,0,2"], source: .eastMoney)
+    }
+}
+
+final class StockVolumeWorkerTests: XCTestCase {
+    private let symbol = SymbolID(code: "000001", market: .a)
+
+    func testDetailsAreSkippedUntilTheMinuteSeriesAdvancesAndManualRefreshForces() async throws {
+        let fixture = SnapshotFixture()
+        let worker = StockVolumeWorker(service: fixture)
+        _ = try await worker.fetch(symbol: symbol, forceDetails: false)
+        var calls = await fixture.detailCalls
+        XCTAssertEqual(calls, 1)
+
+        _ = try await worker.fetch(symbol: symbol, forceDetails: false)
+        let minuteCalls = await fixture.minuteCalls
+        calls = await fixture.detailCalls
+        XCTAssertEqual(minuteCalls, 2)
+        XCTAssertEqual(calls, 1, "the minute series did not advance")
+
+        await fixture.advance()
+        _ = try await worker.fetch(symbol: symbol, forceDetails: false)
+        calls = await fixture.detailCalls
+        XCTAssertEqual(calls, 2)
+        let passed = await fixture.lastCachedRows
+        XCTAssertEqual(passed, ["09:25:00,10,100,0,2"], "same-day rows are handed back to the detail service")
+
+        _ = try await worker.fetch(symbol: symbol, forceDetails: true)
+        calls = await fixture.detailCalls
+        XCTAssertEqual(calls, 3, "manual refresh always fetches details")
+    }
 }
 
 private final class VolumeRequestProtocol: URLProtocol {
@@ -213,6 +379,51 @@ private final class VolumeRequestProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
+private final class RetryVolumeProtocol: URLProtocol {
+    private static let lock = NSLock()
+    private static var calls = 0
+    static var trendsCalls: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return calls
+    }
+    static func reset() {
+        lock.lock()
+        calls = 0
+        lock.unlock()
+    }
+    private static func nextCall() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        calls += 1
+        return calls
+    }
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let url = request.url!
+        let status: Int
+        let body: String
+        if Self.nextCall() == 1 {
+            status = 502
+            body = "unavailable"
+        } else {
+            status = 200
+            body = """
+            {"data":{"code":"000001","trends":[
+              "2026-11-12 09:30,10,10,10,10,100,100000,10",
+              "2026-11-12 09:31,10,10,10,10,10,10000,10"]}}
+            """
+        }
+        let response = HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
+
 private actor VolumeTestWorker: StockVolumeFetching {
     private(set) var calls = 0
     var fails = false
@@ -221,7 +432,7 @@ private actor VolumeTestWorker: StockVolumeFetching {
     func setSnapshot(_ value: StockVolumeDisplay) { snapshot = value }
     func setFailure(_ value: Bool) { fails = value }
     func setDelay(_ value: UInt64) { delay = value }
-    func fetch(symbol: SymbolID) async throws -> StockVolumeDisplay {
+    func fetch(symbol: SymbolID, forceDetails: Bool) async throws -> StockVolumeDisplay {
         calls += 1
         if delay > 0 { try await Task.sleep(nanoseconds: delay) }
         if fails { throw HTTPError.badStatus(502) }
@@ -280,6 +491,20 @@ final class StockVolumeMonitorTests: XCTestCase {
         XCTAssertEqual(model.display, previous)
         XCTAssertEqual(model.updated, updated)
         XCTAssertEqual(model.error, "HTTP 502")
+        model.setVisible(false)
+    }
+
+    func testTransientFailureBacksOffAndASuccessRestoresTheInterval() async throws {
+        let worker = VolumeTestWorker()
+        let model = monitor(worker)
+        await worker.setFailure(true)
+        model.setVisible(true)
+        try await settle(model)
+        XCTAssertEqual(model.pollDelay, 60)
+        await worker.setFailure(false)
+        model.refreshNow()
+        try await settle(model)
+        XCTAssertEqual(model.pollDelay, 0.02)
         model.setVisible(false)
     }
 

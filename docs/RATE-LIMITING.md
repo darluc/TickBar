@@ -93,7 +93,11 @@
 相关实现：`StockVolumeMonitor`、`StockHoldingsMonitor`。
 
 - **刷新节奏**：只在个股分析窗口可见时运行，60 秒一轮，仅 A 股开盘时段；重新显示时距上次成功超过 20 秒立即刷新；关闭窗口取消请求，暂停停止自动请求。
-- **每轮请求**：单只标的的行情与分时，由 `StockVolumeWorker` 合并获取；不做全市场扫描。
+- **每轮请求**：单只标的的分钟序列与明细，由 `StockVolumeWorker` 合并获取；不做全市场扫描。
+- **请求门控**：东方财富分钟和明细共用一个 `ETFRequestGate`（250 毫秒启动间隔）；传输失败 / 5xx 重试一次（300–700 毫秒抖动），429 和数据无效不重试、直接换腾讯。
+- **跨轮缓存**：同一交易日内的明细行合并后对账，分钟结果与上一轮合并；新快照只能补齐或更新，不能删掉已分类分钟。跨日或换股清空。
+- **跳过重复明细**：分钟序列没有前进时自动轮询跳过明细请求；手动刷新始终重新请求。
+- **轮询退避**：整轮失败后 60 → 120 → 240 → 480 → 600 秒，成功即恢复 60 秒；手动刷新不受退避限制。
 - **公开持仓**：每个窗口打开时加载一次，按股票代码缓存 24 小时（`disclosed-stock-holdings.json`）。手动刷新会绕过缓存。接口列已裁到 `SECURITY_CODE,HOLDER_NAME,END_DATE,NOTICE_DATE,HOLD_NUM,FREE_HOLDNUM_RATIO`，单次响应从约 265 KB 降到约 46 KB。
 - **ETF 份额观察**：先读 `disclosed-holdings.json`；当天数据缺失或缓存超过 24 小时才请求；成功后覆盖写入。
 
@@ -106,7 +110,7 @@
 | ETF 份额快照 | `disclosed-holdings.json` | 当日有效，最长 24 小时 |
 | 自选行情快照 | SQLite 行情缓存 | 启动时先展示，随后被实时请求覆盖 |
 | ETF 分钟 / 行情 | 内存 | 当前交易日，关闭面板后释放 |
-| 个股分析分钟 | 内存 | 窗口存活期间 |
+| 个股分析分钟 / 明细 | 内存 | 当前交易日，窗口存活期间；明细行跨轮合并，分钟只向前合并 |
 
 ## 参数汇总
 
@@ -124,6 +128,9 @@
 | 菜单栏刷新 | 默认 5 s，可配置 | `QuoteRefresher.tickerInterval` |
 | 行情源失败冷却 | 30 s / provider+market | `ProviderOrchestrator.cooldownDuration` |
 | 个股分析轮询 | 60 s | `StockVolumeMonitor` |
+| 个股分析请求间隔 | 250 ms | `StockVolumeService.gate` |
+| 个股分析临时失败重试 | 1 次，300–700 ms 抖动 | `StockVolumeService.retrying` |
+| 个股分析轮询退避 | 60 → 600 s | `StockVolumeMonitor.refreshNow` |
 | 重新显示立即刷新阈值 | 20 s | `ETFMonitor` / `StockVolumeMonitor` |
 
 ## 维护规则
