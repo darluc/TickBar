@@ -5,14 +5,10 @@ struct AboutPane: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(LinearGradient(colors: [.accentColor, .accentColor.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 84, height: 84)
-                Text("T")
-                    .font(.system(size: 50, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
-            }
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 84, height: 84)
             VStack(spacing: 4) {
                 Text("TickBar").font(.system(size: 22, weight: .bold))
                 Text(AppVersion.displayShort).foregroundColor(.secondary).font(.system(size: 12))

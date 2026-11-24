@@ -57,14 +57,10 @@ private struct WelcomeStep: View {
     var body: some View {
         VStack(spacing: 18) {
             Spacer()
-            ZStack {
-                RoundedRectangle(cornerRadius: 22)
-                    .fill(LinearGradient(colors: [.accentColor, .accentColor.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 100, height: 100)
-                Text("P")
-                    .font(.system(size: 60, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
-            }
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 100, height: 100)
             Text(L("onboarding.welcome.title", comment: ""))
                 .font(.system(size: 22, weight: .bold))
             Text(L("onboarding.welcome.subtitle", comment: ""))
