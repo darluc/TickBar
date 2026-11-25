@@ -9,6 +9,7 @@ final class MCPEtfSnapshotBuilderTests: XCTestCase {
         display.quoteCount = 20
         display.minuteCount = 18
         display.total = 3_000_000_000
+        display.bars = [0, 0, 0]
         display.cumulative = [0, 500_000_000, 3_000_000_000]
         display.previousDay = "2026-03-19"
         display.averageDays = 10
