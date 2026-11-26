@@ -5,10 +5,17 @@
   <key>method</key>
   <string>developer-id</string>
   <key>teamID</key>
-  <string>475398SZ3P</string>
+  <string>PLACEHOLDER_TEAM</string>
   <key>signingStyle</key>
-  <string>automatic</string>
+  <string>manual</string>
   <key>destination</key>
   <string>export</string>
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>app.tickbar.TickBar</key>
+    <string>PLACEHOLDER_PROFILE_UUID</string>
+  </dict>
+  <key>signingCertificate</key>
+  <string>Developer ID Application</string>
 </dict>
 </plist>

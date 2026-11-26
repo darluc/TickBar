@@ -25,6 +25,7 @@ An Apple Development or Apple Distribution certificate is not a substitute.
 | `MAC_DEVELOPER_ID_P12_BASE64` | Yes | Base64-encoded `.p12`, containing certificate and private key |
 | `MAC_DEVELOPER_ID_P12_PASSWORD` | Yes | Password protecting the `.p12` |
 | `APPLE_TEAM_ID` | Yes | Team ID matching the Developer ID Application certificate |
+| `MAC_DEVELOPER_ID_PROVISIONING_PROFILE_BASE64` | Yes | Base64-encoded **Mac Developer ID** `.provisionprofile` for `app.tickbar.TickBar` (must include iCloud / Key-Value if watchlist sync is enabled) |
 | `APPLE_ID` | For notarization | Apple account email |
 | `APPLE_APP_SPECIFIC_PASSWORD` | For notarization | App-specific password generated at <https://account.apple.com> |
 
@@ -38,6 +39,25 @@ gh secret set APPLE_TEAM_ID --repo darluc/TickBar
 gh secret set APPLE_ID --repo darluc/TickBar
 gh secret set APPLE_APP_SPECIFIC_PASSWORD --repo darluc/TickBar
 ```
+
+### Mac Developer ID provisioning profile (required for iCloud on CI)
+
+GitHub runners have **no Xcode Apple ID login**, so release builds use **manual signing**
+with a checked-in secret profile—not Automatic signing.
+
+1. On [Identifiers](https://developer.apple.com/account/resources/identifiers/list), register
+   **`app.tickbar.TickBar`** (if missing) and enable **iCloud** (Key-value storage is enough).
+2. [Profiles](https://developer.apple.com/account/resources/profiles/list) → **+** → **macOS** →
+   **Developer ID** → App ID **`app.tickbar.TickBar`** → your **Developer ID Application**
+   certificate → download the `.provisionprofile`.
+3. Upload the profile (do not commit the file):
+
+```bash
+base64 -i /path/to/TickBar_Mac_Developer_ID.provisionprofile | \
+  gh secret set MAC_DEVELOPER_ID_PROVISIONING_PROFILE_BASE64 --repo darluc/TickBar
+```
+
+Re-run the failed release after the secret is set.
 
 The runner generates its own temporary keychain password. `MAC_KEYCHAIN_PASSWORD`
 is no longer required. The temporary certificate and keychain are removed even if
@@ -84,9 +104,9 @@ The release workflow:
 2. Generates the project and builds/runs the Debug tests.
 3. Imports the certificate and requires a valid **Developer ID Application**
    identity matching `APPLE_TEAM_ID`.
-4. Archives and **exports** a universal Release app (`arm64` and `x86_64`) with Xcode
-   **Automatic** signing (`-allowProvisioningUpdates`), so iCloud Key-Value storage
-   is embedded via a Developer ID provisioning profile—not manual `codesign --entitlements`.
+4. Archives and **exports** a universal Release app with **Manual** signing: imported
+   Developer ID certificate + **Mac Developer ID provisioning profile** secret (embeds
+   iCloud Key-Value when the profile includes it).
 5. Verifies the exported app signature and that `ubiquity-kvstore-identifier` is present.
 6. Optionally notarizes, staples, and verifies the app.
 7. Packages the ZIP and signs the DMG; optionally notarizes and staples the DMG.
@@ -121,12 +141,9 @@ above applies to the GitHub release workflow.
   `security find-identity -v -p codesigning`.
 - **Notarization rejected:** inspect the notarytool submission log for entitlement
   or signature errors. Do not bypass verification to publish a failed submission.
-- **Archive/export fails (no provisioning profile):** ensure `app.tickbar.TickBar` has
-  **iCloud → Key-value storage** on [Identifiers](https://developer.apple.com/account/resources/identifiers/list),
-  `APPLE_TEAM_ID` matches the Developer ID certificate, and the imported `.p12` includes
-  its private key. The workflow uses `-allowProvisioningUpdates`; if it still fails,
-  download a Mac **Developer ID** profile for that App ID in Xcode once (or use App Store
-  Connect API key signing) and retry.
+- **No Accounts / no provisioning profile on CI:** the runner cannot use Automatic signing.
+  Set `MAC_DEVELOPER_ID_PROVISIONING_PROFILE_BASE64` and ensure the profile is **Developer ID**
+  for `app.tickbar.TickBar`, not a Mac Development profile for `.debug`.
 - **iCloud watchlist sync greyed out on a release build:** confirm
   `codesign -d --entitlements :- /Applications/TickBar.app` lists
   `com.apple.developer.ubiquity-kvstore-identifier` as `<TEAM_ID>.app.tickbar.TickBar`.
