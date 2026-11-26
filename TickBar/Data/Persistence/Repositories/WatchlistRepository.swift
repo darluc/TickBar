@@ -92,7 +92,7 @@ final class WatchlistRepository: @unchecked Sendable {
     }
 
     var canUseICloudWatchlistSync: Bool {
-        cloudSync.isICloudAccountAvailable
+        cloudSync.canUseKeyValueStoreSync
     }
 
     // MARK: - Sync settings
@@ -100,7 +100,7 @@ final class WatchlistRepository: @unchecked Sendable {
     func setICloudWatchlistSyncEnabled(_ enabled: Bool) throws {
         try settingsRepo.setICloudWatchlistSyncEnabled(enabled)
         if enabled {
-            guard cloudSync.isICloudAccountAvailable else {
+            guard cloudSync.canUseKeyValueStoreSync else {
                 throw WatchlistCloudSyncService.WatchlistCloudSyncError.iCloudUnavailable
             }
             try refreshCloudSession(activateIfNeeded: true)

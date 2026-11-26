@@ -154,20 +154,11 @@ jobs:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          BUNDLE_ID="app.tickbar.TickBar"
-          ENTITLEMENTS="build/TickBar.release.entitlements.plist"
-          cp TickBar/Resources/TickBar.entitlements "$ENTITLEMENTS"
-          /usr/libexec/PlistBuddy -c "Set :com.apple.developer.ubiquity-kvstore-identifier ${TEAM_ID}.${BUNDLE_ID}" "$ENTITLEMENTS"
           codesign --force --deep --options runtime --timestamp \
             --sign "$IDENTITY" --keychain "$RUNNER_TEMP/tickbar-signing.keychain-db" \
-            --entitlements "$ENTITLEMENTS" build/Release/TickBar.app
+            --entitlements TickBar/Resources/TickBar.entitlements build/Release/TickBar.app
           codesign --verify --deep --strict --verbose=2 build/Release/TickBar.app
           codesign -dvv build/Release/TickBar.app 2>&1 | grep -F "TeamIdentifier=$TEAM_ID"
-          if codesign -d --entitlements :- build/Release/TickBar.app 2>&1 | grep -qE '\$\(.*\)'; then
-            echo '::error::Entitlements still contain unexpanded $(...) placeholders.'
-            exit 1
-          fi
-          codesign -d --entitlements :- build/Release/TickBar.app 2>&1 | grep -F "ubiquity-kvstore-identifier" | grep -F "${TEAM_ID}.${BUNDLE_ID}"
 
       - name: Notarize and staple application
         if: steps.credentials.outputs.notarize == 'true'

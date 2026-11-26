@@ -1,5 +1,6 @@
 import Foundation
 import os
+import Security
 
 extension Notification.Name {
     static let tickbarWatchlistSyncModeDidChange = Notification.Name("tickbar.watchlistSyncModeDidChange")
@@ -120,6 +121,7 @@ final class WatchlistCloudSyncService: @unchecked Sendable {
     private var externalObserver: NSObjectProtocol?
 
     private let accountAvailable: () -> Bool
+    private let keyValueEntitlementAvailable: () -> Bool
 
     private let encoder: JSONEncoder = {
         let e = JSONEncoder()
@@ -135,10 +137,12 @@ final class WatchlistCloudSyncService: @unchecked Sendable {
 
     init(
         store: WatchlistCloudKeyValueStoring = UbiquitousKeyValueStoreAdapter(),
-        iCloudAccountAvailable: (() -> Bool)? = nil
+        iCloudAccountAvailable: (() -> Bool)? = nil,
+        keyValueEntitlementAvailable: (() -> Bool)? = nil
     ) {
         self.store = store
         self.accountAvailable = iCloudAccountAvailable ?? { FileManager.default.ubiquityIdentityToken != nil }
+        self.keyValueEntitlementAvailable = keyValueEntitlementAvailable ?? { Self.hasUbiquityKeyValueStoreEntitlement }
     }
 
     deinit {
@@ -149,6 +153,10 @@ final class WatchlistCloudSyncService: @unchecked Sendable {
 
     var isICloudAccountAvailable: Bool {
         accountAvailable()
+    }
+
+    var canUseKeyValueStoreSync: Bool {
+        accountAvailable() && keyValueEntitlementAvailable()
     }
 
     func startObservingExternalChanges(handler: @escaping () -> Void) {
@@ -227,6 +235,15 @@ final class WatchlistCloudSyncService: @unchecked Sendable {
         let handlers = changeHandlers.values
         lock.unlock()
         handlers.forEach { $0() }
+    }
+
+    /// Release builds omit KVS entitlement until Developer ID provisioning is fixed.
+    static var hasUbiquityKeyValueStoreEntitlement: Bool {
+        guard let task = SecTaskCreateFromSelf(nil) else { return false }
+        let key = "com.apple.developer.ubiquity-kvstore-identifier" as CFString
+        guard let value = SecTaskCopyValueForEntitlement(task, key, nil) else { return false }
+        if let s = value as? String { return !s.isEmpty }
+        return true
     }
 
     enum WatchlistCloudSyncError: LocalizedError {

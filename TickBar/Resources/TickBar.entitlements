@@ -15,7 +15,12 @@
   <true/>
   <key>com.apple.security.files.user-selected.read-write</key>
   <true/>
-  <key>com.apple.developer.ubiquity-kvstore-identifier</key>
-  <string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
+  <!--
+    iCloud Key-Value (ubiquity-kvstore-identifier) is intentionally omitted from Release
+    entitlements until Developer ID signing embeds a matching provisioning profile.
+    Release builds with that entitlement fail to spawn on macOS (launchd error 163) even
+    when notarized. Debug builds keep KVS in TickBar-Debug.entitlements for local testing.
+    Watchlist iCloud sync is unavailable in store builds until this is re-enabled.
+  -->
 </dict>
 </plist>
