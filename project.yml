@@ -50,6 +50,10 @@ targets:
           - zh-Hans
           - en
         CFBundleDevelopmentRegion: zh-Hans
+    attributes:
+      SystemCapabilities:
+        com.apple.iCloud:
+          enabled: 1
     settings:
       base:
         GENERATE_INFOPLIST_FILE: NO

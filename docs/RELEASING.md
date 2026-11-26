@@ -84,8 +84,10 @@ The release workflow:
 2. Generates the project and builds/runs the Debug tests.
 3. Imports the certificate and requires a valid **Developer ID Application**
    identity matching `APPLE_TEAM_ID`.
-4. Archives a universal Release app (`arm64` and `x86_64`).
-5. Signs with hardened runtime and a secure timestamp, and verifies the signature.
+4. Archives and **exports** a universal Release app (`arm64` and `x86_64`) with Xcode
+   **Automatic** signing (`-allowProvisioningUpdates`), so iCloud Key-Value storage
+   is embedded via a Developer ID provisioning profile—not manual `codesign --entitlements`.
+5. Verifies the exported app signature and that `ubiquity-kvstore-identifier` is present.
 6. Optionally notarizes, staples, and verifies the app.
 7. Packages the ZIP and signs the DMG; optionally notarizes and staples the DMG.
 8. Uploads Actions artifacts and publishes a GitHub Release. Re-running a release
@@ -119,11 +121,15 @@ above applies to the GitHub release workflow.
   `security find-identity -v -p codesigning`.
 - **Notarization rejected:** inspect the notarytool submission log for entitlement
   or signature errors. Do not bypass verification to publish a failed submission.
-- **"The application can't be opened" (launchd error 163):** Release builds currently
-  **omit** `com.apple.developer.ubiquity-kvstore-identifier`. Developer ID–signed apps with
-  that entitlement failed to spawn here even after fixing `$(TeamIdentifierPrefix)`
-  expansion and notarization. Re-enable only after Xcode/CI signing embeds a matching
-  Mac Developer ID provisioning profile with iCloud Key-value storage.
+- **Archive/export fails (no provisioning profile):** ensure `app.tickbar.TickBar` has
+  **iCloud → Key-value storage** on [Identifiers](https://developer.apple.com/account/resources/identifiers/list),
+  `APPLE_TEAM_ID` matches the Developer ID certificate, and the imported `.p12` includes
+  its private key. The workflow uses `-allowProvisioningUpdates`; if it still fails,
+  download a Mac **Developer ID** profile for that App ID in Xcode once (or use App Store
+  Connect API key signing) and retry.
+- **iCloud watchlist sync greyed out on a release build:** confirm
+  `codesign -d --entitlements :- /Applications/TickBar.app` lists
+  `com.apple.developer.ubiquity-kvstore-identifier` as `<TEAM_ID>.app.tickbar.TickBar`.
 - **App data after rename:** on launch, TickBar imports the old TickerBar database
   and preferences once. Missing watchlists, stocks, holdings, alerts and settings
   are merged into an existing TickBar database; current records win ID conflicts.

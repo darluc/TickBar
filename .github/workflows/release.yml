@@ -127,38 +127,52 @@ jobs:
           echo "identity=$IDENTITY" >> "$GITHUB_OUTPUT"
           rm -f "$RUNNER_TEMP/tickbar-cert.p12"
 
-      - name: Archive application
+      - name: Archive application (signed)
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
           xcodebuild \
             -project TickBar.xcodeproj -scheme TickBar -configuration Release \
             -destination 'generic/platform=macOS' \
             -archivePath build/TickBar.xcarchive \
+            -allowProvisioningUpdates \
             MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
-            ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO archive
-          mkdir -p build/Release
-          cp -R build/TickBar.xcarchive/Products/Applications/TickBar.app build/Release/
-          APP_ARCHS="$(lipo -archs build/Release/TickBar.app/Contents/MacOS/TickBar)"
+            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO archive
+
+      - name: Export Developer ID build
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          EXPORT_OPTS="build/ExportOptions.generated.plist"
+          cp ExportOptions.plist "$EXPORT_OPTS"
+          /usr/libexec/PlistBuddy -c "Set :teamID $TEAM_ID" "$EXPORT_OPTS"
+          xcodebuild -exportArchive \
+            -archivePath build/TickBar.xcarchive \
+            -exportPath build/Release \
+            -exportOptionsPlist "$EXPORT_OPTS" \
+            -allowProvisioningUpdates
+          APP="build/Release/TickBar.app"
+          test -d "$APP"
+          APP_ARCHS="$(lipo -archs "$APP/Contents/MacOS/TickBar")"
           for arch in arm64 x86_64; do
             if [[ " $APP_ARCHS " != *" $arch "* ]]; then
               echo "::error::Release executable is missing architecture: $arch"
               exit 1
             fi
           done
-
-      - name: Sign and verify application
-        env:
-          IDENTITY: ${{ steps.signing.outputs.identity }}
-          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          set -euo pipefail
-          codesign --force --deep --options runtime --timestamp \
-            --sign "$IDENTITY" --keychain "$RUNNER_TEMP/tickbar-signing.keychain-db" \
-            --entitlements TickBar/Resources/TickBar.entitlements build/Release/TickBar.app
-          codesign --verify --deep --strict --verbose=2 build/Release/TickBar.app
-          codesign -dvv build/Release/TickBar.app 2>&1 | grep -F "TeamIdentifier=$TEAM_ID"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dvv "$APP" 2>&1 | grep -F "TeamIdentifier=$TEAM_ID"
+          ENT_DUMP="$(codesign -d --entitlements :- "$APP" 2>&1)"
+          echo "$ENT_DUMP" | grep -F ubiquity-kvstore-identifier
+          if echo "$ENT_DUMP" | grep -qE '\$\(.*\)'; then
+            echo '::error::Entitlements still contain unexpanded \$(...) placeholders.'
+            exit 1
+          fi
+          echo "$ENT_DUMP" | grep -F "${TEAM_ID}.app.tickbar.TickBar"
 
       - name: Notarize and staple application
         if: steps.credentials.outputs.notarize == 'true'
