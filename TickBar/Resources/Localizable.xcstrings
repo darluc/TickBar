@@ -4466,6 +4466,22 @@
         }
       }
     },
+    "icloud.watchlist.error.missingEntitlement": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This TickBar build does not include iCloud Key-Value storage (release builds temporarily omit it). Watchlist sync needs a future update with fixed signing, or use TickBar Dev built from Xcode."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前安装的 TickBar 正式版未包含 iCloud 键值存储能力（发布版暂未嵌入该权限，用于保证能正常启动）。自选 iCloud 同步需等待后续版本恢复签名，或在 Xcode 中编译 TickBar Dev 使用。"
+          }
+        }
+      }
+    },
     "icloud.watchlist.error.sync": {
       "localizations": {
         "en": {

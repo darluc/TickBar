@@ -159,6 +159,10 @@ final class WatchlistCloudSyncService: @unchecked Sendable {
         accountAvailable() && keyValueEntitlementAvailable()
     }
 
+    var hasKeyValueStoreEntitlement: Bool {
+        keyValueEntitlementAvailable()
+    }
+
     func startObservingExternalChanges(handler: @escaping () -> Void) {
         stopObservingExternalChanges()
         externalObserver = NotificationCenter.default.addObserver(

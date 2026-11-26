@@ -95,6 +95,14 @@ final class WatchlistRepository: @unchecked Sendable {
         cloudSync.canUseKeyValueStoreSync
     }
 
+    var isSignedIntoICloud: Bool {
+        cloudSync.isICloudAccountAvailable
+    }
+
+    var hasICloudKeyValueEntitlement: Bool {
+        cloudSync.hasKeyValueStoreEntitlement
+    }
+
     // MARK: - Sync settings
 
     func setICloudWatchlistSyncEnabled(_ enabled: Bool) throws {

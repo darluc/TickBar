@@ -28,7 +28,13 @@ private struct GeneralPaneContent: View {
     @State private var proxyHost: String = ""
     @State private var proxyPortText: String = "7890"
     @State private var iCloudWatchlistSync: Bool = false
-    @State private var iCloudSyncUnavailable: Bool = false
+    @State private var iCloudSyncBlockedReason: ICloudWatchlistSyncBlockedReason = .none
+
+    private enum ICloudWatchlistSyncBlockedReason {
+        case none
+        case notSignedIn
+        case missingEntitlement
+    }
 
     /// 语言:不走 @State,直接读写 storage,避免 .onAppear 触发 .onChange
     private var languageBinding: Binding<LanguageManager.Choice> {
@@ -124,7 +130,7 @@ private struct GeneralPaneContent: View {
 
             Section(header: Text(L("settings.icloudWatchlistSection", comment: "")).font(.headline)) {
                 Toggle(L("settings.icloudWatchlistSync", comment: ""), isOn: $iCloudWatchlistSync)
-                    .disabled(iCloudSyncUnavailable)
+                    .disabled(iCloudSyncBlockedReason != .none)
                     .onChange(of: iCloudWatchlistSync) { enabled in
                         do {
                             try container.watchlistRepo.setICloudWatchlistSyncEnabled(enabled)
@@ -141,8 +147,12 @@ private struct GeneralPaneContent: View {
                 Text(L("settings.icloudWatchlistSync.hint", comment: ""))
                     .font(.caption)
                     .foregroundColor(.secondary)
-                if iCloudSyncUnavailable {
+                if iCloudSyncBlockedReason == .notSignedIn {
                     Text(L("icloud.watchlist.error.unavailable", comment: ""))
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                } else if iCloudSyncBlockedReason == .missingEntitlement {
+                    Text(L("icloud.watchlist.error.missingEntitlement", comment: ""))
                         .font(.caption)
                         .foregroundColor(.orange)
                 }
@@ -203,7 +213,18 @@ private struct GeneralPaneContent: View {
             proxyHost = container.settingsRepo.proxyHost
             proxyPortText = "\(container.settingsRepo.proxyPort)"
             iCloudWatchlistSync = container.watchlistRepo.iCloudWatchlistSyncEnabled
-            iCloudSyncUnavailable = !container.watchlistRepo.canUseICloudWatchlistSync
+            refreshICloudSyncBlockedReason()
+        }
+    }
+
+    private func refreshICloudSyncBlockedReason() {
+        let repo = container.watchlistRepo
+        if repo.canUseICloudWatchlistSync {
+            iCloudSyncBlockedReason = .none
+        } else if !repo.hasICloudKeyValueEntitlement {
+            iCloudSyncBlockedReason = .missingEntitlement
+        } else {
+            iCloudSyncBlockedReason = .notSignedIn
         }
     }
 
