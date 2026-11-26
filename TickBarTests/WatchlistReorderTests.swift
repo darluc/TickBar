@@ -17,8 +17,8 @@ final class WatchlistReorderTests: XCTestCase {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let dbPath = tempDir.appendingPathComponent("test.sqlite").path
         database = try TickBar.Database(path: dbPath)
-        watchlistRepo = WatchlistRepository(dbPool: database.dbPool, settingsRepo: settingsRepo)
         settingsRepo = SettingsRepository(dbPool: database.dbPool)
+        watchlistRepo = WatchlistRepository(dbPool: database.dbPool, settingsRepo: settingsRepo)
 
         let clock = MarketClock()
         let tencent = TencentProvider()

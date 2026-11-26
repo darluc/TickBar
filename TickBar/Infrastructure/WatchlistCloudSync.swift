@@ -119,6 +119,8 @@ final class WatchlistCloudSyncService: @unchecked Sendable {
     private var changeHandlers: [UUID: () -> Void] = [:]
     private var externalObserver: NSObjectProtocol?
 
+    private let accountAvailable: () -> Bool
+
     private let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
@@ -131,8 +133,12 @@ final class WatchlistCloudSyncService: @unchecked Sendable {
         return d
     }()
 
-    init(store: WatchlistCloudKeyValueStoring = UbiquitousKeyValueStoreAdapter()) {
+    init(
+        store: WatchlistCloudKeyValueStoring = UbiquitousKeyValueStoreAdapter(),
+        iCloudAccountAvailable: (() -> Bool)? = nil
+    ) {
         self.store = store
+        self.accountAvailable = iCloudAccountAvailable ?? { FileManager.default.ubiquityIdentityToken != nil }
     }
 
     deinit {
@@ -142,7 +148,7 @@ final class WatchlistCloudSyncService: @unchecked Sendable {
     }
 
     var isICloudAccountAvailable: Bool {
-        FileManager.default.ubiquityIdentityToken != nil
+        accountAvailable()
     }
 
     func startObservingExternalChanges(handler: @escaping () -> Void) {

@@ -57,7 +57,7 @@ final class WatchlistCloudSyncTests: XCTestCase {
         let db = try TickBar.Database(path: tempDir.appendingPathComponent("t.sqlite").path)
         let settings = SettingsRepository(dbPool: db.dbPool)
         let memoryStore = InMemoryWatchlistCloudKeyValueStore()
-        let cloud = WatchlistCloudSyncService(store: memoryStore)
+        let cloud = WatchlistCloudSyncService(store: memoryStore, iCloudAccountAvailable: { true })
         let repo = WatchlistRepository(dbPool: db.dbPool, settingsRepo: settings, cloudSync: cloud)
 
         let localOnly = WatchItem(
