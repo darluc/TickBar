@@ -4914,6 +4914,38 @@
         }
       }
     },
+    "launch.failed.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TickBar could not start"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TickBar 未能启动"
+          }
+        }
+      }
+    },
+    "launch.failed.body": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TickBar is a menu bar app: after a successful launch, look for its icon near the clock (not in the Dock).\n\nIf startup failed, the error was:\n%@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TickBar 是菜单栏应用：启动成功后请到屏幕右上角时钟附近找图标（不会出现在程序坞）。\n\n若启动失败，错误信息为：\n%@"
+          }
+        }
+      }
+    },
     "action.ok": {
       "localizations": {
         "en": {

@@ -115,6 +115,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } catch {
             Log.app.error("bootstrap failed: \(String(describing: error), privacy: .public)")
+            let alert = NSAlert()
+            alert.messageText = L("launch.failed.title", comment: "TickBar 未能启动")
+            alert.informativeText = String(
+                format: L("launch.failed.body", comment: ""),
+                String(describing: error)
+            )
+            alert.alertStyle = .critical
+            alert.addButton(withTitle: L("action.ok", comment: ""))
+            alert.runModal()
             NSApp.terminate(nil)
         }
     }

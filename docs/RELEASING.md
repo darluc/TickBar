@@ -119,6 +119,11 @@ above applies to the GitHub release workflow.
   `security find-identity -v -p codesigning`.
 - **Notarization rejected:** inspect the notarytool submission log for entitlement
   or signature errors. Do not bypass verification to publish a failed submission.
+- **"The application can't be opened" after adding iCloud KVS:** the release workflow
+  must expand `ubiquity-kvstore-identifier` to `<TEAM_ID>.<bundle id>` before
+  `codesign`. Xcode expands `$(TeamIdentifierPrefix)` automatically; plain
+  `codesign --entitlements` does not. After signing, run
+  `codesign -d --entitlements :- TickBar.app` and confirm the KVS string has no `$(...)`.
 - **App data after rename:** on launch, TickBar imports the old TickerBar database
   and preferences once. Missing watchlists, stocks, holdings, alerts and settings
   are merged into an existing TickBar database; current records win ID conflicts.
