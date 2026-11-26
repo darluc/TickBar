@@ -27,6 +27,8 @@ private struct GeneralPaneContent: View {
     @State private var proxyMode: NetworkConfig.ProxyMode = .system
     @State private var proxyHost: String = ""
     @State private var proxyPortText: String = "7890"
+    @State private var iCloudWatchlistSync: Bool = false
+    @State private var iCloudSyncUnavailable: Bool = false
 
     /// 语言:不走 @State,直接读写 storage,避免 .onAppear 触发 .onChange
     private var languageBinding: Binding<LanguageManager.Choice> {
@@ -120,6 +122,32 @@ private struct GeneralPaneContent: View {
 
             MCPSettingsSection(container: container)
 
+            Section(header: Text(L("settings.icloudWatchlistSection", comment: "")).font(.headline)) {
+                Toggle(L("settings.icloudWatchlistSync", comment: ""), isOn: $iCloudWatchlistSync)
+                    .disabled(iCloudSyncUnavailable)
+                    .onChange(of: iCloudWatchlistSync) { enabled in
+                        do {
+                            try container.watchlistRepo.setICloudWatchlistSyncEnabled(enabled)
+                            container.refresher.refreshNow()
+                        } catch {
+                            iCloudWatchlistSync = container.watchlistRepo.iCloudWatchlistSyncEnabled
+                            let alert = NSAlert()
+                            alert.messageText = L("icloud.watchlist.error.title", comment: "")
+                            alert.informativeText = error.localizedDescription
+                            alert.alertStyle = .warning
+                            alert.runModal()
+                        }
+                    }
+                Text(L("settings.icloudWatchlistSync.hint", comment: ""))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                if iCloudSyncUnavailable {
+                    Text(L("icloud.watchlist.error.unavailable", comment: ""))
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+            }
+
             Section(header: Text(L("settings.privacySection", comment: "")).font(.headline)) {
                 Toggle(L("settings.hideOnScreenShare", comment: ""), isOn: $hideOnScreenShare)
                     .onChange(of: hideOnScreenShare) { value in
@@ -174,6 +202,8 @@ private struct GeneralPaneContent: View {
             proxyMode = container.settingsRepo.proxyMode
             proxyHost = container.settingsRepo.proxyHost
             proxyPortText = "\(container.settingsRepo.proxyPort)"
+            iCloudWatchlistSync = container.watchlistRepo.iCloudWatchlistSyncEnabled
+            iCloudSyncUnavailable = !container.watchlistRepo.canUseICloudWatchlistSync
         }
     }
 

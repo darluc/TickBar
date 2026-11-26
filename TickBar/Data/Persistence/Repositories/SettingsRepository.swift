@@ -87,6 +87,7 @@ struct SettingsRepository {
         static let proxyHost = "proxy_host"
         static let proxyPort = "proxy_port"
         static let mcpEnabled = "mcp_enabled"
+        static let iCloudWatchlistSync = "icloud_watchlist_sync"
 
         /// 拼出市场对应的 override key,避免外部各自拼字符串
         static func marketOverride(_ market: Market) -> String {
@@ -106,6 +107,14 @@ struct SettingsRepository {
 
     func setMCPEnabled(_ enabled: Bool) throws {
         try set(Keys.mcpEnabled, enabled ? "1" : "0")
+    }
+
+    var iCloudWatchlistSyncEnabled: Bool {
+        string(Keys.iCloudWatchlistSync) == "1"
+    }
+
+    func setICloudWatchlistSyncEnabled(_ enabled: Bool) throws {
+        try set(Keys.iCloudWatchlistSync, enabled ? "1" : "0")
     }
 
     /// FX 自动刷新间隔(秒)。0 = 关闭自动刷新。

@@ -27,8 +27,8 @@ final class DependencyContainer {
         let dbPath = try Database.defaultPath()
         let database = try Database(path: dbPath)
         self.database = database
-        self.watchlistRepo = WatchlistRepository(dbPool: database.dbPool)
         self.settingsRepo = SettingsRepository(dbPool: database.dbPool)
+        self.watchlistRepo = WatchlistRepository(dbPool: database.dbPool, settingsRepo: settingsRepo)
         self.quoteCacheRepo = QuoteCacheRepository(dbPool: database.dbPool)
 
         NetworkConfig.apply(

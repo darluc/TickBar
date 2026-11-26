@@ -40,6 +40,14 @@ final class PopoverViewModel: ObservableObject {
         self.watchlist = loadedItems.filter { $0.watchlistId == selectedGroupID }
     }
 
+    /// iCloud 同步开关切换后，重新绑定 GRDB / iCloud 观察流。
+    func restartWatchlistObservation() {
+        groupsObservationTask?.cancel()
+        itemsObservationTask?.cancel()
+        reload()
+        startObserving()
+    }
+
     private func startObserving() {
         groupsObservationTask = Task { [weak self] in
             guard let stream = self?.watchlistRepo.observeGroups() else { return }

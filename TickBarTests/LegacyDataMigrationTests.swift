@@ -20,12 +20,16 @@ final class LegacyDataMigrationTests: XCTestCase {
         return try TickBar.Database(path: url.path)
     }
 
+    private func watchlistRepo(_ database: TickBar.Database) -> WatchlistRepository {
+        WatchlistRepository(dbPool: database.dbPool, settingsRepo: SettingsRepository(dbPool: database.dbPool))
+    }
+
     private func seed(_ database: TickBar.Database) throws -> (WatchlistGroup, WatchItem) {
         let group = WatchlistGroup(id: UUID(), name: "Legacy custom list", order: 2,
                                    createdAt: Date(timeIntervalSince1970: 1_700_000_000))
         let item = WatchItem(symbol: .init(code: "600519", market: .a), name: "Legacy stock", order: 3,
                              inTicker: false, createdAt: group.createdAt, watchlistId: group.id)
-        let repo = WatchlistRepository(dbPool: database.dbPool)
+        let repo = watchlistRepo(database)
         try repo.upsertGroup(group)
         try repo.upsert(item)
         try SettingsRepository(dbPool: database.dbPool).set("legacy_setting", "retained")
@@ -44,13 +48,13 @@ final class LegacyDataMigrationTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: wal.path))
         try migrate()
         let current = try makeDatabase("TickBar/tickbar.sqlite")
-        let repo = WatchlistRepository(dbPool: current.dbPool)
+        let repo = watchlistRepo(current)
         XCTAssertEqual(try repo.all(), [item])
         XCTAssertEqual(try repo.allGroups().first(where: { $0.id == group.id }), group)
         XCTAssertEqual(SettingsRepository(dbPool: current.dbPool).string("legacy_setting"), "retained")
         XCTAssertEqual(SettingsRepository(dbPool: current.dbPool).string(LegacyDataMigration.databaseMarker), "1")
         XCTAssertNil(SettingsRepository(dbPool: old.dbPool).string(LegacyDataMigration.databaseMarker))
-        XCTAssertEqual(try WatchlistRepository(dbPool: old.dbPool).all(), [item])
+        XCTAssertEqual(try watchlistRepo(old).all(), [item])
         let backups = try FileManager.default.contentsOfDirectory(at: root.appendingPathComponent("TickBar/MigrationBackups"), includingPropertiesForKeys: nil)
         XCTAssertEqual(backups.count, 1)
         XCTAssertTrue(FileManager.default.fileExists(atPath: backups[0].appendingPathComponent("legacy.sqlite").path))
@@ -60,7 +64,7 @@ final class LegacyDataMigrationTests: XCTestCase {
         let old = try makeDatabase("TickerBar/tickerbar.sqlite")
         let (group, item) = try seed(old)
         let current = try makeDatabase("TickBar/tickbar.sqlite")
-        let repo = WatchlistRepository(dbPool: current.dbPool)
+        let repo = watchlistRepo(current)
         let newItem = WatchItem(symbol: .init(code: "AAPL", market: .us), name: "New stock",
                                 createdAt: Date(timeIntervalSince1970: 1_700_000_000))
         try repo.upsert(newItem)
@@ -88,7 +92,7 @@ final class LegacyDataMigrationTests: XCTestCase {
         edited.name = "Renamed in TickBar"
         edited.order = 1
         edited.inTicker = true
-        let repo = WatchlistRepository(dbPool: current.dbPool)
+        let repo = watchlistRepo(current)
         try repo.upsert(edited)
         try migrate()
         XCTAssertEqual(try repo.all(), [edited])
@@ -105,7 +109,7 @@ final class LegacyDataMigrationTests: XCTestCase {
         }
         try migrate()
         let current = try makeDatabase("TickBar/tickbar.sqlite")
-        XCTAssertEqual(try WatchlistRepository(dbPool: current.dbPool).all().count, 1)
+        XCTAssertEqual(try watchlistRepo(current).all().count, 1)
         XCTAssertTrue(try current.dbPool.read { try $0.tableExists("watchlistGroup") })
         XCTAssertFalse(try old.dbPool.read { try $0.tableExists("watchlistGroup") })
     }
@@ -119,7 +123,7 @@ final class LegacyDataMigrationTests: XCTestCase {
         let (_, item) = try seed(debug)
         try migrate(folder: "TickBar-Dev")
         let current = try makeDatabase("TickBar-Dev/tickbar.sqlite")
-        XCTAssertEqual(try WatchlistRepository(dbPool: current.dbPool).all(), [item])
+        XCTAssertEqual(try watchlistRepo(current).all(), [item])
     }
 
     func testTickerBarIsPreferredOverOlderPanBar() throws {
@@ -130,7 +134,7 @@ final class LegacyDataMigrationTests: XCTestCase {
         _ = try seed(panbar)
         try migrate()
         let current = try makeDatabase("TickBar/tickbar.sqlite")
-        XCTAssertEqual(try WatchlistRepository(dbPool: current.dbPool).all(), [item])
+        XCTAssertEqual(try watchlistRepo(current).all(), [item])
     }
 
     func testImportFailureRollsBackAllInsertedRowsAndDoesNotSetMarker() throws {
@@ -139,7 +143,7 @@ final class LegacyDataMigrationTests: XCTestCase {
         try old.dbPool.write { try $0.execute(sql: "DROP TABLE watchItem") }
         let current = try makeDatabase("TickBar/tickbar.sqlite")
         XCTAssertThrowsError(try migrate())
-        XCTAssertEqual(try WatchlistRepository(dbPool: current.dbPool).allGroups().count, 1)
+        XCTAssertEqual(try watchlistRepo(current).allGroups().count, 1)
         XCTAssertNil(SettingsRepository(dbPool: current.dbPool).string(LegacyDataMigration.databaseMarker))
     }
 

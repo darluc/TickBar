@@ -4386,6 +4386,102 @@
         }
       }
     },
+    "settings.icloudWatchlistSection": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud Watchlist"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 自选"
+          }
+        }
+      }
+    },
+    "settings.icloudWatchlistSync": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync watchlists and groups via iCloud"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过 iCloud 同步自选与分类"
+          }
+        }
+      }
+    },
+    "settings.icloudWatchlistSync.hint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When enabled, this device shows and saves watchlists in iCloud. Local SQLite data is kept on disk but not merged. If iCloud is empty, your current local watchlists are uploaded as the first version."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启后，本机展示并写入 iCloud 中的自选数据；本地数据库仍会保留，不会清除或合并。若 iCloud 尚无数据，会把当前本地自选作为首个版本上传。"
+          }
+        }
+      }
+    },
+    "icloud.watchlist.error.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud sync unavailable"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法使用 iCloud 同步"
+          }
+        }
+      }
+    },
+    "icloud.watchlist.error.unavailable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to iCloud on this Mac to use watchlist sync."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在本机登录 iCloud 后再开启自选同步。"
+          }
+        }
+      }
+    },
+    "icloud.watchlist.error.sync": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+          "state": "translated",
+            "value": "Could not sync watchlist to iCloud. Try again later."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法将自选同步到 iCloud，请稍后重试。"
+          }
+        }
+      }
+    },
     "settings.backupSection": {
       "localizations": {
         "en": {

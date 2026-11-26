@@ -57,6 +57,16 @@ final class PopoverController {
             }
         }
 
+        NotificationCenter.default.addObserver(
+            forName: .tickbarWatchlistSyncModeDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.viewModel.restartWatchlistObservation()
+            }
+        }
+
         PinnedWindowController.shared.onUnpin = { [weak self] in
             // 取消 pin 时，如果菜单栏有 anchorView，可以优雅收回到菜单栏
             self?.handleUnpin()
