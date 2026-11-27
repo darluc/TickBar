@@ -147,12 +147,22 @@ jobs:
           if [[ "$APP_ID" != *"app.tickbar.TickBar"* ]]; then
             echo '::warning::Profile application-identifier does not include app.tickbar.TickBar — check the profile App ID.'
           fi
+          if ! /usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.developer.ubiquity-kvstore-identifier' "$PROFILE_PLIST" >/dev/null 2>&1; then
+            echo '::error::Provisioning profile is missing com.apple.developer.ubiquity-kvstore-identifier.'
+            echo 'Enable iCloud (Key-value) on App ID app.tickbar.TickBar, then create a new Developer ID Application profile and update the secret.'
+            exit 1
+          fi
+          KVS="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.developer.ubiquity-kvstore-identifier' "$PROFILE_PLIST")"
+          echo "Profile KVS entitlement: $KVS"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp "$PROFILE_SRC" "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.provisionprofile"
 
       - name: Archive application
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IDENTITY: ${{ steps.signing.outputs.identity }}
+          PROFILE_UUID: ${{ steps.provisioning.outputs.profile_uuid }}
         run: |
           set -euo pipefail
           xcodebuild \
@@ -160,7 +170,12 @@ jobs:
             -destination 'generic/platform=macOS' \
             -archivePath build/TickBar.xcarchive \
             MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
-            ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO archive
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            SWIFT_PACKAGE_MANAGER_CODE_SIGNING_ALLOWED=NO \
+            TickBar_CODE_SIGN_STYLE=Manual \
+            TickBar_CODE_SIGN_IDENTITY="$IDENTITY" \
+            TickBar_PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
+            ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO archive
 
       - name: Export Developer ID build
         env:
@@ -189,13 +204,21 @@ jobs:
           done
           codesign --verify --deep --strict --verbose=2 "$APP"
           codesign -dvv "$APP" 2>&1 | grep -F "TeamIdentifier=$TEAM_ID"
-          ENT_DUMP="$(codesign -d --entitlements :- "$APP" 2>&1)"
-          echo "$ENT_DUMP" | grep -F ubiquity-kvstore-identifier
+          ENT_DUMP="$(codesign -d --entitlements :- "$APP" 2>&1 || true)"
+          echo "--- Embedded entitlements ---"
+          echo "$ENT_DUMP"
+          if ! echo "$ENT_DUMP" | grep -Fq ubiquity-kvstore-identifier; then
+            echo '::error::Exported app is missing ubiquity-kvstore-identifier. Regenerate the Developer ID profile after enabling iCloud on app.tickbar.TickBar.'
+            exit 1
+          fi
           if echo "$ENT_DUMP" | grep -qE '\$\(.*\)'; then
             echo '::error::Entitlements still contain unexpanded \$(...) placeholders.'
             exit 1
           fi
-          echo "$ENT_DUMP" | grep -F "${TEAM_ID}.app.tickbar.TickBar"
+          if ! echo "$ENT_DUMP" | grep -Fq "${TEAM_ID}.app.tickbar.TickBar"; then
+            echo '::error::ubiquity-kvstore-identifier does not match TEAM_ID.app.tickbar.TickBar'
+            exit 1
+          fi
 
       - name: Notarize and staple application
         if: steps.credentials.outputs.notarize == 'true'
