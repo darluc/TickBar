@@ -150,12 +150,9 @@ jobs:
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp "$PROFILE_SRC" "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.provisionprofile"
 
-      - name: Archive application (signed)
+      - name: Archive application
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          IDENTITY: ${{ steps.signing.outputs.identity }}
-          PROFILE_UUID: ${{ steps.provisioning.outputs.profile_uuid }}
         run: |
           set -euo pipefail
           xcodebuild \
@@ -163,22 +160,20 @@ jobs:
             -destination 'generic/platform=macOS' \
             -archivePath build/TickBar.xcarchive \
             MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="$IDENTITY" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
-            ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO archive
+            ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO archive
 
       - name: Export Developer ID build
         env:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           PROFILE_UUID: ${{ steps.provisioning.outputs.profile_uuid }}
+          PROFILE_NAME: ${{ steps.provisioning.outputs.profile_name }}
         run: |
           set -euo pipefail
           EXPORT_OPTS="build/ExportOptions.generated.plist"
           cp ExportOptions.plist "$EXPORT_OPTS"
           /usr/libexec/PlistBuddy -c "Set :teamID $TEAM_ID" "$EXPORT_OPTS"
-          /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:app.tickbar.TickBar $PROFILE_UUID" "$EXPORT_OPTS"
+          # exportArchive expects profile name (not UUID) for manual macOS Developer ID
+          /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:app.tickbar.TickBar $PROFILE_NAME" "$EXPORT_OPTS"
           xcodebuild -exportArchive \
             -archivePath build/TickBar.xcarchive \
             -exportPath build/Release \

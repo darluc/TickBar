@@ -104,11 +104,9 @@ The release workflow:
 2. Generates the project and builds/runs the Debug tests.
 3. Imports the certificate and requires a valid **Developer ID Application**
    identity matching `APPLE_TEAM_ID`.
-4. Archives and **exports** a universal Release app with **Manual** signing: imported
-   Developer ID certificate + **Mac Developer ID provisioning profile** secret (embeds
-   iCloud Key-Value when the profile includes it).
-5. Verifies the exported app signature and that `ubiquity-kvstore-identifier` is present.
-6. Optionally notarizes, staples, and verifies the app.
+4. **Unsigned** `archive` (`CODE_SIGNING_ALLOWED=NO` — SPM dependencies must not get a provisioning profile).
+5. **Exports** with Manual Developer ID + the provisioning profile secret (signs only `TickBar.app`, embeds iCloud KVS from the profile).
+6. Verifies the exported app signature and `ubiquity-kvstore-identifier`.
 7. Packages the ZIP and signs the DMG; optionally notarizes and staples the DMG.
 8. Uploads Actions artifacts and publishes a GitHub Release. Re-running a release
    replaces its ZIP/DMG assets without deleting its release notes or the release.
@@ -141,9 +139,9 @@ above applies to the GitHub release workflow.
   `security find-identity -v -p codesigning`.
 - **Notarization rejected:** inspect the notarytool submission log for entitlement
   or signature errors. Do not bypass verification to publish a failed submission.
-- **No Accounts / no provisioning profile on CI:** the runner cannot use Automatic signing.
-  Set `MAC_DEVELOPER_ID_PROVISIONING_PROFILE_BASE64` and ensure the profile is **Developer ID**
-  for `app.tickbar.TickBar`, not a Mac Development profile for `.debug`.
+- **GRDB / swift-nio "does not support provisioning profiles" on archive:** do not pass
+  `PROVISIONING_PROFILE_SPECIFIER` to the whole `archive` command; archive unsigned and
+  sign only at `exportArchive`.
 - **iCloud watchlist sync greyed out on a release build:** confirm
   `codesign -d --entitlements :- /Applications/TickBar.app` lists
   `com.apple.developer.ubiquity-kvstore-identifier` as `<TEAM_ID>.app.tickbar.TickBar`.
