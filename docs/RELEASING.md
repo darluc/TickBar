@@ -71,6 +71,13 @@ Without either, the workflow warns and publishes signed, **not notarized** build
 Gatekeeper may block downloaded builds. Configure both for normal public distribution.
 Notarization, stapling, and verification failures block publication when enabled.
 
+## Version numbering (tags)
+
+Patch tags use the form `2026.1.N` (e.g. `2026.1.17`). Failed or aborted release attempts
+usually have their tags removed from the remote; the next successful publish uses the
+next number. Gaps in the published list (e.g. no `2026.1.14` on GitHub) mean those
+builds never shipped.
+
 ## Publish a release
 
 Versions must contain two or three numeric components, optionally prefixed with
