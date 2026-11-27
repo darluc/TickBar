@@ -174,6 +174,7 @@ jobs:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           PROFILE_UUID: ${{ steps.provisioning.outputs.profile_uuid }}
           PROFILE_NAME: ${{ steps.provisioning.outputs.profile_name }}
+          IDENTITY: ${{ steps.signing.outputs.identity }}
         run: |
           set -euo pipefail
           EXPORT_OPTS="build/ExportOptions.generated.plist"
@@ -194,6 +195,16 @@ jobs:
               exit 1
             fi
           done
+          # exportArchive from an unsigned archive often embeds only team/app identifiers.
+          ENT_PLIST="build/TickBar.release.entitlements.plist"
+          rm -f "$ENT_PLIST"
+          /usr/libexec/PlistBuddy -c 'Add :com.apple.security.network.client bool true' "$ENT_PLIST"
+          /usr/libexec/PlistBuddy -c 'Add :com.apple.security.files.user-selected.read-write bool true' "$ENT_PLIST"
+          /usr/libexec/PlistBuddy -c "Add :com.apple.developer.ubiquity-kvstore-identifier string ${TEAM_ID}.app.tickbar.TickBar" "$ENT_PLIST"
+          codesign --force --options runtime --timestamp \
+            --sign "$IDENTITY" --keychain "$RUNNER_TEMP/tickbar-signing.keychain-db" \
+            --entitlements "$ENT_PLIST" \
+            "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
           codesign -dvv "$APP" 2>&1 | grep -F "TeamIdentifier=$TEAM_ID"
           ENT_DUMP="$(codesign -d --entitlements :- "$APP" 2>&1 || true)"
