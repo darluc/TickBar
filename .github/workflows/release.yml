@@ -160,9 +160,6 @@ jobs:
       - name: Archive application
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          IDENTITY: ${{ steps.signing.outputs.identity }}
-          PROFILE_UUID: ${{ steps.provisioning.outputs.profile_uuid }}
         run: |
           set -euo pipefail
           xcodebuild \
@@ -170,12 +167,7 @@ jobs:
             -destination 'generic/platform=macOS' \
             -archivePath build/TickBar.xcarchive \
             MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            SWIFT_PACKAGE_MANAGER_CODE_SIGNING_ALLOWED=NO \
-            TickBar_CODE_SIGN_STYLE=Manual \
-            TickBar_CODE_SIGN_IDENTITY="$IDENTITY" \
-            TickBar_PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
-            ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO archive
+            ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO archive
 
       - name: Export Developer ID build
         env:
@@ -215,8 +207,8 @@ jobs:
             echo '::error::Entitlements still contain unexpanded \$(...) placeholders.'
             exit 1
           fi
-          if ! echo "$ENT_DUMP" | grep -Fq "${TEAM_ID}.app.tickbar.TickBar"; then
-            echo '::error::ubiquity-kvstore-identifier does not match TEAM_ID.app.tickbar.TickBar'
+          if ! echo "$ENT_DUMP" | grep -F ubiquity-kvstore-identifier | grep -Fq "${TEAM_ID}."; then
+            echo '::error::ubiquity-kvstore-identifier must include team prefix (e.g. 475398SZ3P.app.tickbar.TickBar or 475398SZ3P.*).'
             exit 1
           fi
 
